@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Final</title>
+    <title>HTML将棋 Ultra - High Visibility</title>
     <style>
         :root {
             --bg-deep: #121212;
@@ -12,9 +12,10 @@
             --cell-border: #554433;
             --text-main: #e0e0e0;
             --text-accent: #ffcc00;
+            --selected-bg: rgba(255, 204, 0, 0.4);
             --btn-bg: #333333;
             --btn-border: #444444;
-            --cell-size: min(10.5vw, 5.8vh, 50px); /* 画面高さを考慮して微調整 */
+            --cell-size: min(10.5vw, 5.8vh, 50px);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         
@@ -25,7 +26,6 @@
             color: var(--text-main); overflow: hidden; padding: 4px;
         }
 
-        /* ゲームコンテナ */
         .game-container {
             flex: 1; display: flex; flex-direction: column;
             align-items: center; justify-content: center; gap: 4px;
@@ -34,7 +34,7 @@
         .game-container.rotated { flex-direction: column-reverse; }
 
         .komadai {
-            width: 98%; max-width: 500px; height: 46px;
+            width: 98%; max-width: 500px; height: 50px;
             background: var(--bg-panel); border: 1px solid var(--btn-border);
             display: flex; align-items: center; padding: 0 10px;
             border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
@@ -43,11 +43,23 @@
             font-size: 13px; font-weight: bold; margin-right: 8px;
             color: var(--text-accent); max-width: 85px; overflow: hidden; text-overflow: ellipsis;
         }
-        .hand-container { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
-        .hand-piece { font-size: 19px; cursor: pointer; color: #fdf5e6; }
+        .hand-container { display: flex; gap: 6px; flex: 1; overflow-x: auto; align-items: center; }
+        
+        /* 持ち駒のスタイルと選択時のエフェクト */
+        .hand-piece { 
+            font-size: 22px; cursor: pointer; color: #fdf5e6; 
+            padding: 2px 4px; border-radius: 4px; transition: all 0.2s;
+        }
+        .hand-piece.selected { 
+            background: var(--selected-bg);
+            box-shadow: 0 0 12px var(--text-accent);
+            transform: scale(1.25); /* 選択時に大きくする */
+            color: #fff;
+            font-weight: bold;
+        }
 
         .board-wrapper { display: flex; flex-direction: column; align-items: center; }
-        .status-msg { height: 20px; color: var(--text-accent); font-weight: bold; font-size: 14px; margin-bottom: 2px; }
+        .status-msg { height: 20px; color: var(--text-accent); font-weight: bold; font-size: 14px; margin-bottom: 2px; transition: all 0.3s; }
         
         .board {
             display: grid; grid-template-columns: repeat(9, var(--cell-size));
@@ -60,9 +72,9 @@
             border: 0.5px solid var(--cell-border); display: flex;
             align-items: center; justify-content: center;
             font-size: calc(var(--cell-size) * 0.7); cursor: pointer;
-            color: #fdf5e6;
+            color: #fdf5e6; transition: background 0.2s;
         }
-        .cell.selected { background: rgba(255, 204, 0, 0.3); }
+        .cell.selected { background: var(--selected-bg); box-shadow: inset 0 0 10px var(--text-accent); }
         .cell.last-move { background: rgba(255, 100, 0, 0.15); }
         .p-flip { transform: rotate(180deg); }
 
@@ -78,7 +90,7 @@
         .kifu-line { cursor: pointer; padding: 6px 10px; background: #222; border-radius: 4px; color: #aaa; font-size: 13px; }
         .kifu-line.active { background: var(--text-accent); color: #000; font-weight: bold; }
 
-        /* ボトムコントロールエリア */
+        /* ボトムコントロール */
         .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
         .nav-group { grid-column: span 4; display: flex; gap: 4px; }
@@ -91,7 +103,7 @@
         .btn-action { background: #2a2a2a; }
         .btn-undo { background: #3d3010; color: var(--text-accent); }
         .btn-resign { background: #3d1010; color: #ff6666; }
-        .btn-reset { background: #222244; color: #99ccff; } /* リセットボタン用 */
+        .btn-reset { background: #222244; color: #99ccff; }
         .btn-save { background: #114422; color: #66ff99; grid-column: span 4; padding: 12px; margin-top: 2px; }
 
         /* モーダル */
@@ -201,7 +213,6 @@
         for(let i=0; i<9; i++) board[6][i] = {p:'歩', owner:'sente'};
         board[7][1] = {p:'角', owner:'sente'}; board[7][7] = {p:'飛', owner:'sente'};
         l1.forEach((p, c) => board[8][c] = {p: p==='玉'?'玉':p, owner:'sente'});
-        
         turn = 'sente'; selected = null; history = []; result = null;
         const now = new Date();
         if(!document.getElementById('date-text').value) {
@@ -211,12 +222,10 @@
     }
 
     function resetGame() {
-        if (!confirm("最初から対局をやり直しますか？\n（現在の棋譜履歴は消去されます）")) return;
-        // 名前末尾の○×も一旦リセットしたい場合は以下を有効に
+        if (!confirm("最初から対局をやり直しますか？")) return;
         const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
         si.value = si.value.replace(/[○×]$/, ''); gi.value = gi.value.replace(/[○×]$/, '');
-        syncDisplayNames();
-        init();
+        syncDisplayNames(); init();
     }
 
     function render() {
@@ -226,7 +235,7 @@
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 const cell = document.createElement('div');
-                cell.className = `cell ${selected?.r===r && selected?.c===c ? 'selected' : ''} ${lastP?.r===r && lastP?.c===c ? 'last-move' : ''}`;
+                cell.className = `cell ${selected?.type==='board' && selected?.r===r && selected?.c===c ? 'selected' : ''} ${lastP?.r===r && lastP?.c===c ? 'last-move' : ''}`;
                 const d = state.board[r][c];
                 if (d) { cell.textContent = d.p; if (d.owner === 'gote') cell.classList.add('p-flip'); }
                 if (!result && currentIndex === history.length - 1) cell.onclick = () => handleCellClick(r, c);
@@ -241,7 +250,9 @@
         const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
         for (const [p, count] of Object.entries(handData)) if (count > 0) {
             const el = document.createElement('div');
-            el.className = `hand-piece ${selected?.type==='hand' && selected.p===p && selected.owner===owner ? 'selected' : ''}`;
+            // 選択されている駒には .selected を付与
+            const isSelected = (selected?.type === 'hand' && selected.p === p && selected.owner === owner);
+            el.className = `hand-piece ${isSelected ? 'selected' : ''}`;
             if (owner === 'gote') el.classList.add('p-flip');
             el.innerHTML = `${p}${count > 1 ? count : ''}`;
             if (!result && currentIndex === history.length - 1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); };
@@ -303,9 +314,17 @@
         const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fn}.kif`; a.click(); closeSettings();
     }
 
-    // --- ロジックコア ---
+    // --- ロジック ---
     function saveHistory(moveStr) { history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null, turn, moveStr }); currentIndex = history.length - 1; updateKifuList(); }
-    function selectHand(p, owner) { if (turn === owner) { selected = { type: 'hand', p, owner }; render(); } }
+    
+    function selectHand(p, owner) { 
+        if (turn === owner) { 
+            if (selected?.type === 'hand' && selected.p === p) selected = null; // 再タップで解除
+            else selected = { type: 'hand', p, owner }; 
+            render(); 
+        } 
+    }
+
     function handleCellClick(r, c) {
         const clicked = board[r][c];
         if (selected?.type === 'hand') { if (!clicked) { if (checkIllegalDrop(selected.p, r, c)) return; executeMove(null, null, r, c, selected.p, true); } selected = null; }
@@ -317,6 +336,7 @@
         } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
         render();
     }
+
     function canMove(b, fr, fc, tr, tc, owner) {
         const pData = b[fr][fc]; if (!pData) return false;
         const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
@@ -330,11 +350,13 @@
             }
         } return false;
     }
+
     function checkIllegalDrop(p, r, c) {
         if (p === '歩') for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) return (alert("二歩"), true);
         if (((p === '歩' || p === '香') && ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8))) || (p === '桂' && ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7)))) return (alert("行き所なし"), true);
         return false;
     }
+
     function executeMove(fr, fc, tr, tc, piece, isDrop = false) {
         let finalPiece = piece, suffix = "";
         if (isDrop) { hands[turn][piece]--; suffix = "打"; }
@@ -348,19 +370,32 @@
         history[currentIndex].lastPos = {r: tr, c: tc}; turn = turn === 'sente' ? 'gote' : 'sente';
         saveHistory(moveStr); render();
     }
+
     function jumpTo(idx) { currentIndex = idx; render(); if(document.getElementById('kifu-overlay').style.display==='flex') toggleKifu(false); }
     function prevMove() { if (currentIndex > 0) jumpTo(currentIndex - 1); }
     function nextMove() { if (currentIndex < history.length - 1) jumpTo(currentIndex + 1); }
+    
     function updateKifuList() {
         const log = document.getElementById('kifu-list'); log.innerHTML = '';
         history.forEach((h, i) => { const d = document.createElement('div'); d.className = `kifu-line ${i === currentIndex ? 'active' : ''}`; d.textContent = h.moveStr; d.onclick = () => jumpTo(i); log.appendChild(d); });
         log.scrollTop = log.scrollHeight;
     }
+
     function updateStatus() {
         const msg = document.getElementById('msg'); 
         if (result) { msg.textContent = `${result === 'sente_win' ? document.getElementById('name-display-sente').textContent : document.getElementById('name-display-gote').textContent} 勝`; return; }
-        msg.textContent = `${history[currentIndex].turn === 'sente' ? '先手' : '後手'}番`;
-        if (currentIndex < history.length - 1) msg.textContent = "閲覧中";
+        
+        let turnStr = (history[currentIndex].turn === 'sente' ? '先手' : '後手');
+        
+        // 駒を選択中ならメッセージを変える
+        if (selected) {
+            if (selected.type === 'hand') msg.textContent = `【${selected.p}】を打つ場所を選んでください`;
+            else msg.textContent = `【${selected.p}】の移動先を選んでください`;
+        } else {
+            msg.textContent = `${turnStr}番`;
+        }
+        
+        if (currentIndex < history.length - 1) msg.textContent = "棋譜閲覧中";
     }
     init();
 </script>
