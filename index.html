@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Optimized</title>
+    <title>HTML将棋 Ultra - Perfect Fit</title>
     <style>
         :root {
             --bg-deep: #121212;
@@ -14,7 +14,8 @@
             --text-accent: #ffcc00;
             --btn-bg: #333333;
             --btn-border: #444444;
-            --cell-size: min(10.5vw, 7vh, 55px);
+            /* 盤面サイズを画面高さに合わせて動的に計算 */
+            --cell-size: min(10.5vw, 6vh, 50px);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
         
@@ -22,39 +23,35 @@
             font-family: 'Hiragino Mincho ProN', serif;
             display: flex; flex-direction: column;
             height: 100dvh; margin: 0; background: var(--bg-deep);
-            color: var(--text-main); overflow: hidden; padding: 5px;
+            color: var(--text-main); overflow: hidden; padding: 4px;
         }
 
-        /* ゲームコンテナ：反転時に中身を入れ替える */
         .game-container {
             flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 10px;
+            align-items: center; justify-content: center; gap: 4px;
             min-height: 0;
         }
         .game-container.rotated { flex-direction: column-reverse; }
 
-        /* 駒台 */
         .komadai {
-            width: 98%; max-width: 500px; height: 55px;
+            width: 98%; max-width: 500px; height: 48px;
             background: var(--bg-panel); border: 1px solid var(--btn-border);
-            display: flex; align-items: center; padding: 0 12px;
-            border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+            display: flex; align-items: center; padding: 0 10px;
+            border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.4);
         }
         .player-name {
-            font-size: 14px; font-weight: bold; margin-right: 12px;
-            color: var(--text-accent); max-width: 100px; overflow: hidden; text-overflow: ellipsis;
+            font-size: 13px; font-weight: bold; margin-right: 8px;
+            color: var(--text-accent); max-width: 90px; overflow: hidden; text-overflow: ellipsis;
         }
-        .hand-container { display: flex; gap: 8px; flex: 1; overflow-x: auto; }
-        .hand-piece { font-size: 24px; cursor: pointer; color: #fdf5e6; transition: transform 0.3s; }
+        .hand-container { display: flex; gap: 4px; flex: 1; overflow-x: auto; }
+        .hand-piece { font-size: 20px; cursor: pointer; color: #fdf5e6; }
 
-        /* 盤面 */
         .board-wrapper { display: flex; flex-direction: column; align-items: center; }
-        .status-msg { height: 24px; color: var(--text-accent); font-weight: bold; margin-bottom: 4px; }
+        .status-msg { height: 20px; color: var(--text-accent); font-weight: bold; font-size: 14px; margin-bottom: 2px; }
         
         .board {
             display: grid; grid-template-columns: repeat(9, var(--cell-size));
-            background: var(--board-dark); border: 3px solid #000;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.6);
+            background: var(--board-dark); border: 2px solid #000;
         }
         .board.rotated { transform: rotate(180deg); }
 
@@ -67,81 +64,92 @@
         }
         .cell.selected { background: rgba(255, 204, 0, 0.3); }
         .cell.last-move { background: rgba(255, 100, 0, 0.2); }
-
-        /* 駒向き：.p-flipクラスで制御 */
         .p-flip { transform: rotate(180deg); }
 
-        /* ポップアップ棋譜リスト */
+        /* 棋譜オーバーレイ */
         #kifu-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.85); z-index: 200; flex-direction: column; padding: 20px;
+            background: rgba(0,0,0,0.9); z-index: 200; flex-direction: column; padding: 15px;
         }
         #kifu-list {
             flex: 1; overflow-y: auto; background: #000; border-radius: 8px;
-            padding: 10px; display: flex; flex-wrap: wrap; gap: 6px; align-content: flex-start;
+            padding: 8px; display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start;
         }
-        .kifu-line { cursor: pointer; padding: 8px 12px; background: #222; border-radius: 6px; color: #aaa; font-size: 14px; }
+        .kifu-line { cursor: pointer; padding: 6px 10px; background: #222; border-radius: 4px; color: #aaa; font-size: 13px; }
         .kifu-line.active { background: var(--text-accent); color: #000; font-weight: bold; }
 
-        /* ボトムエリア */
-        .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 6px; padding: 5px 0; }
-        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        /* ボトムエリア：見切れ防止のためコンパクトに */
+        .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
         .nav-group { grid-column: span 4; display: flex; gap: 4px; }
         
         button {
-            padding: 14px 4px; cursor: pointer; background: var(--btn-bg);
-            border: 1px solid var(--btn-border); border-radius: 8px;
-            color: var(--text-main); font-weight: bold; font-size: 14px;
+            padding: 10px 2px; cursor: pointer; background: var(--btn-bg);
+            border: 1px solid var(--btn-border); border-radius: 6px;
+            color: var(--text-main); font-weight: bold; font-size: 12px;
         }
         .btn-undo { background: #443311; color: var(--text-accent); }
         .btn-resign { background: #441111; color: #ff6666; }
-        .btn-save { background: #114422; color: #66ff99; grid-column: span 4; padding: 16px; margin-top: 4px; }
+        .btn-save { background: #114422; color: #66ff99; grid-column: span 4; padding: 12px; }
 
         /* 設定モーダル */
         #modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.9); z-index: 300; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.8); z-index: 300; align-items: center; justify-content: center;
         }
         .modal-content {
-            background: var(--bg-panel); padding: 25px; border-radius: 20px;
-            width: 92%; max-width: 400px; display: flex; flex-direction: column; gap: 15px;
+            background: var(--bg-panel); padding: 15px; border-radius: 12px;
+            width: 90%; max-width: 380px; display: flex; flex-direction: column; gap: 10px;
         }
         .modal-content input {
-            background: #000; border: 1px solid var(--btn-border); padding: 15px;
-            color: var(--text-main); border-radius: 8px; font-size: 18px; width: 100%;
+            background: #000; border: 1px solid var(--btn-border); padding: 10px;
+            color: var(--text-main); border-radius: 6px; font-size: 16px; width: 100%;
         }
-        label { font-size: 12px; color: var(--text-accent); opacity: 0.8; }
+        .modal-row { display: flex; flex-direction: column; gap: 4px; }
+        label { font-size: 11px; color: var(--text-accent); opacity: 0.8; }
     </style>
 </head>
 <body>
 
 <div id="kifu-overlay" onclick="toggleKifu(false)">
-    <h3 style="color:var(--text-accent); margin-top:0;">棋譜履歴 (タップで閉じる)</h3>
+    <h3 style="color:var(--text-accent); margin:0 0 10px 0; font-size:16px;">棋譜履歴 (タップで戻る)</h3>
     <div id="kifu-list" onclick="event.stopPropagation()"></div>
-    <button onclick="toggleKifu(false)" style="margin-top:15px; background:var(--btn-bg)">盤面に戻る</button>
+    <button onclick="toggleKifu(false)" style="margin-top:10px; width:100%;">閉じる</button>
 </div>
 
 <div id="modal-overlay">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 id="modal-title" style="margin:0; color:var(--text-accent)">Settings / Save</h3>
-        <div>
+        <h3 id="modal-title" style="margin:0; color:var(--text-accent); font-size:18px;">対局設定</h3>
+        
+        <div class="modal-row">
             <label>棋戦名</label>
-            <input type="text" id="event" placeholder="Event Name">
+            <input type="text" id="event" placeholder="例：練習対局">
         </div>
-        <div>
-            <label>対局者 (先手 / 後手)</label>
-            <div style="display:flex; gap:10px;">
-                <input type="text" id="sente-input" placeholder="先手">
-                <input type="text" id="gote-input" placeholder="後手">
+
+        <div class="modal-row">
+            <label>対局日</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="date-text" style="flex:1">
+                <input type="date" id="date-picker" style="width:40px; padding:5px;" onchange="document.getElementById('date-text').value = this.value.replace(/-/g,'/')">
             </div>
         </div>
-        <div id="filename-area" style="display:none;">
-            <label>保存ファイル名</label>
+
+        <div class="modal-row">
+            <label>先手氏名 / 後手氏名</label>
+            <div style="display:flex; gap:5px;">
+                <input type="text" id="sente-input" placeholder="先手" style="flex:1">
+                <input type="text" id="gote-input" placeholder="後手" style="flex:1">
+            </div>
+        </div>
+
+        <div id="filename-area" style="display:none;" class="modal-row">
+            <label>保存ファイル名 (.kif)</label>
             <input type="text" id="filename-input">
         </div>
-        <div style="display:flex; gap:10px; margin-top:10px;">
-            <button onclick="closeSettings()" style="flex:1">Cancel</button>
-            <button id="save-final-btn" style="flex:1; background:#114422; color:#66ff99; border:none; display:none;" onclick="executeDownload()">Save KIF</button>
+
+        <div style="display:flex; gap:8px; margin-top:5px;">
+            <button onclick="closeSettings()" style="flex:1">キャンセル</button>
+            <button id="save-final-btn" style="flex:1; background:#114422; color:#66ff99; border:none; display:none;" onclick="executeDownload()">保存を実行</button>
         </div>
     </div>
 </div>
@@ -167,8 +175,8 @@
     <div class="controls">
         <div class="nav-group">
             <button onclick="jumpTo(0)" style="flex:1">|◀</button>
-            <button onclick="prevMove()" style="flex:1.5">◀ PREV</button>
-            <button onclick="nextMove()" style="flex:1.5">NEXT ▶</button>
+            <button onclick="prevMove()" style="flex:1.2">◀ 前</button>
+            <button onclick="nextMove()" style="flex:1.2">次 ▶</button>
             <button onclick="jumpTo(history.length - 1)" style="flex:1">▶|</button>
         </div>
         <button class="btn-undo" onclick="undoMove()">一手戻す</button>
@@ -209,6 +217,11 @@
         board[7][1] = {p:'角', owner:'sente'}; board[7][7] = {p:'飛', owner:'sente'};
         l1.forEach((p, c) => board[8][c] = {p: p==='玉'?'玉':p, owner:'sente'});
         ['歩','香','桂','銀','金','角','飛'].forEach(p => { hands.sente[p] = 0; hands.gote[p] = 0; });
+        
+        // 日付の初期化
+        const now = new Date();
+        document.getElementById('date-text').value = `${now.getFullYear()}/${(now.getMonth()+1).toString().padStart(2,'0')}/${now.getDate().toString().padStart(2,'0')}`;
+        
         saveHistory("開始"); render();
     }
 
@@ -223,7 +236,6 @@
                 const d = state.board[r][c];
                 if (d) {
                     cell.textContent = d.p;
-                    // 駒の向き：後手の駒、または盤反転時の処理
                     if (d.owner === 'gote') cell.classList.add('p-flip');
                 }
                 if (!result && currentIndex === history.length - 1) cell.onclick = () => handleCellClick(r, c);
@@ -234,13 +246,11 @@
         updateStatus();
     }
 
-    // --- 持ち駒UIの同期改善 ---
     function updateHandUI(owner, handData) {
         const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
         for (const [p, count] of Object.entries(handData)) if (count > 0) {
             const el = document.createElement('div');
             el.className = `hand-piece ${selected?.type==='hand' && selected.p===p && selected.owner===owner ? 'selected' : ''}`;
-            // 盤が回転しているかどうかで持ち駒の向きを変える
             if (owner === 'gote') el.classList.add('p-flip');
             el.innerHTML = `${p}${count > 1 ? count : ''}`;
             if (!result && currentIndex === history.length - 1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); };
@@ -252,34 +262,31 @@
         isRotated = !isRotated;
         document.getElementById('board').classList.toggle('rotated');
         document.getElementById('main-container').classList.toggle('rotated');
-        // 全体の向きを再描画
         render();
     }
 
-    function toggleKifu(show) {
-        document.getElementById('kifu-overlay').style.display = show ? 'flex' : 'none';
-    }
+    function toggleKifu(show) { document.getElementById('kifu-overlay').style.display = show ? 'flex' : 'none'; }
 
-    // --- 名前・勝敗ロジック（継承） ---
     function openSettings(mode) {
         const overlay = document.getElementById('modal-overlay');
         const fnameArea = document.getElementById('filename-area');
         const saveBtn = document.getElementById('save-final-btn');
         overlay.style.display = 'flex';
         if (mode === 'save') {
-            document.getElementById('modal-title').textContent = "棋譜を保存";
+            document.getElementById('modal-title').textContent = "棋譜を保存する";
             fnameArea.style.display = 'block';
             saveBtn.style.display = 'block';
-            const sn = document.getElementById('sente-input').value, gn = document.getElementById('gote-input').value;
+            const sn = document.getElementById('sente-input').value.trim(), gn = document.getElementById('gote-input').value.trim();
             document.getElementById('filename-input').value = (sn || gn) ? `${sn}_${gn}` : `shogi_${Date.now()}`;
         } else {
-            document.getElementById('modal-title').textContent = "対局設定";
+            document.getElementById('modal-title').textContent = "対局者の設定";
             fnameArea.style.display = 'none';
             saveBtn.style.display = 'none';
         }
     }
 
     function closeSettings() { syncDisplayNames(); document.getElementById('modal-overlay').style.display = 'none'; }
+
     function syncDisplayNames() {
         const sn = document.getElementById('sente-input').value.trim();
         const gn = document.getElementById('gote-input').value.trim();
@@ -310,7 +317,16 @@
         currentIndex = history.length - 1; syncDisplayNames(); updateKifuList(); render();
     }
 
-    // --- 基本ロジック（継承） ---
+    function executeDownload() {
+        const sn = document.getElementById('sente-input').value || "先手", gn = document.getElementById('gote-input').value || "後手", fn = document.getElementById('filename-input').value || "record";
+        const event = document.getElementById('event').value || "無題";
+        const dateStr = document.getElementById('date-text').value;
+        let out = `V2.2\n棋戦：${event}\n開始日時：${dateStr}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n` + history.slice(1).map(h => h.moveStr).join('\n') + '\n';
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fn}.kif`; a.click(); closeSettings();
+    }
+
+    // --- ロジックコア ---
     function saveHistory(moveStr) { history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null, turn, moveStr }); currentIndex = history.length - 1; updateKifuList(); }
     function selectHand(p, owner) { if (turn === owner) { selected = { type: 'hand', p, owner }; render(); } }
     function handleCellClick(r, c) {
@@ -355,13 +371,7 @@
         history[currentIndex].lastPos = {r: tr, c: tc}; turn = turn === 'sente' ? 'gote' : 'sente';
         saveHistory(moveStr); render();
     }
-    function executeDownload() {
-        const sn = document.getElementById('sente-input').value || "先手", gn = document.getElementById('gote-input').value || "後手", fn = document.getElementById('filename-input').value || "record";
-        let out = `V2.2\n棋戦：${document.getElementById('event').value || "無題"}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n` + history.slice(1).map(h => h.moveStr).join('\n') + '\n';
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fn}.kif`; a.click(); closeSettings();
-    }
-    function jumpTo(idx) { currentIndex = idx; render(); toggleKifu(false); }
+    function jumpTo(idx) { currentIndex = idx; render(); if(document.getElementById('kifu-overlay').style.display==='flex') toggleKifu(false); }
     function prevMove() { if (currentIndex > 0) jumpTo(currentIndex - 1); }
     function nextMove() { if (currentIndex < history.length - 1) jumpTo(currentIndex + 1); }
     function updateKifuList() {
