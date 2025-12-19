@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - KIF Compatibility Edition</title>
+    <title>HTML将棋 Ultra - Kifu for iOS 互換版</title>
     <style>
         :root {
             --bg-deep: #121212; --bg-panel: #1e1e1e; --board-dark: #3a2a1d;
@@ -52,7 +52,7 @@
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 id="modal-title" style="margin:0; color:var(--text-accent);">対局設定</h3>
         <div><label style="font-size:11px;">棋戦名</label><input type="text" id="event" placeholder="棋戦名"></div>
-        <div><label style="font-size:11px;">対局日 (西暦表記に自動変換されます)</label><input type="text" id="date-text"></div>
+        <div><label style="font-size:11px;">対局日</label><input type="text" id="date-text"></div>
         <div style="display:flex; gap:5px;"><input type="text" id="sente-input" placeholder="先手" style="flex:1"><input type="text" id="gote-input" placeholder="後手" style="flex:1"></div>
         <div id="filename-area" style="display:none;"><label style="font-size:11px;">ファイル名</label><input type="text" id="filename-input"></div>
         <div style="display:flex; gap:8px;"><button onclick="closeSettings()" style="flex:1">キャンセル</button><button id="save-final-btn" style="flex:1; background:#114422; color:#66ff99; display:none;" onclick="executeDownload()">保存</button></div>
@@ -160,16 +160,16 @@
         reader.readAsText(file, "Shift_JIS");
     }
 
-    /* --- 保存機能の互換性強化 (executeDownload) --- */
+    /* --- 保存機能：Kifu for iOS / iPhone 特化版 --- */
     function executeDownload() {
         const sente = document.getElementById('sente-input').value || "先手";
         const gote = document.getElementById('gote-input').value || "後手";
         const event = document.getElementById('event').value || "対局";
         const date = document.getElementById('date-text').value;
 
-        // 改行コードを Windows(CRLF) に統一
         const CRLF = "\r\n";
         let out = `#KIF version=2.0 encoding=UTF-8${CRLF}`;
+        out += `# ---- Kifu for iPhone 棋譜ファイル ----${CRLF}`; 
         out += `開始日時：${date}${CRLF}`;
         out += `棋戦：${event}${CRLF}`;
         out += `先手：${sente}${CRLF}`;
@@ -178,18 +178,17 @@
 
         history.slice(1).forEach((h, i) => {
             const num = (i + 1).toString().padStart(4, ' ');
-            // 指し手の幅を揃えてダミーの消費時間を追加 (互換性のため)
-            const move = h.moveStr.padEnd(12, ' ');
-            out += `${num} ${move} ( 0:00/00:00:00)${CRLF}`;
+            // Kifu for iOS の書式: 指し手の後に3つのスペースを入れ、消費時間を ( 0:00/00:) に固定
+            const move = h.moveStr.padEnd(10, ' ');
+            out += `${num} ${move}   ( 0:00/00:)${CRLF}`;
         });
 
-        // BOM(Byte Order Mark)を追加してUTF-8であることを明示
+        // UTF-8(BOM付き)で作成
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
         const blob = new Blob([bom, out], { type: 'text/plain;charset=utf-8' });
         
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        // ファイル名から禁止文字を除去
         const safeName = (document.getElementById('filename-input').value || "shogi").replace(/[\\/:*?"<>|]/g, "");
         a.download = `${safeName}.kif`;
         a.click();
