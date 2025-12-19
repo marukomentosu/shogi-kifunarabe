@@ -3,80 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Final Edition</title>
+    <title>HTML将棋 Ultra - One Screen Edition</title>
     <style>
-        :root { --cell-size: clamp(35px, 10vw, 55px); --board-bg: #e3b062; }
-        body { font-family: 'Hiragino Mincho ProN', serif; display: flex; flex-direction: column; align-items: center; background: #fdf5e6; margin: 0; padding: 10px; touch-action: manipulation; }
-        .info-area { width: 100%; max-width: 500px; display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-bottom: 10px; }
-        .info-area input { padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; width: 100%; box-sizing: border-box; }
-        
-        .game-container { display: flex; flex-direction: row; gap: 15px; align-items: flex-start; justify-content: center; width: 100%; max-width: 1000px; }
-        @media (max-width: 800px) { .game-container { flex-direction: column; align-items: center; } }
+        :root {
+            --bg-color: #fdf5e6;
+            --board-bg: #e3b062;
+            /* 画面の高さに基づき、はみ出さないセルサイズを計算 */
+            --cell-size: min(10vw, 6vh, 50px);
+        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: 'Hiragino Mincho ProN', serif;
+            display: flex; flex-direction: column;
+            height: 100dvh; margin: 0; background: var(--bg-color);
+            overflow: hidden; /* スクロール禁止 */
+            padding: 5px;
+        }
 
-        .komadai { width: 120px; min-height: 180px; background: #d2a45d; border: 2px solid #333; padding: 10px; box-shadow: 2px 2px 8px rgba(0,0,0,0.2); border-radius: 4px; }
-        @media (max-width: 800px) { .komadai { width: 90%; min-height: auto; display: flex; align-items: center; gap: 10px; } }
-        .hand-container { display: flex; flex-wrap: wrap; gap: 5px; }
-        .hand-piece { font-size: 24px; cursor: pointer; padding: 2px; }
-        .hand-piece.selected { background: yellow; border-radius: 4px; }
+        /* 上部情報エリア：コンパクト化 */
+        .info-area {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+            width: 100%; max-width: 600px; margin-bottom: 5px;
+        }
+        .info-area input {
+            padding: 4px; border: 1px solid #ccc; border-radius: 4px;
+            font-size: 11px; width: 100%;
+        }
 
-        .board { display: grid; grid-template-columns: repeat(9, var(--cell-size)); background: var(--board-bg); border: 2px solid #333; transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1); }
+        /* メインコンテナ：縦に詰め込む */
+        .game-container {
+            flex: 1; display: flex; flex-direction: column;
+            align-items: center; justify-content: center; gap: 5px;
+            min-height: 0; /* 子要素の縮小を許可 */
+        }
+
+        .komadai {
+            width: 95%; max-width: 500px; height: 45px;
+            background: #d2a45d; border: 1px solid #333;
+            display: flex; align-items: center; padding: 0 10px;
+            border-radius: 4px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+        }
+        .komadai h4 { margin: 0 10px 0 0; font-size: 12px; white-space: nowrap; }
+        .hand-container { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
+        .hand-piece { font-size: 18px; cursor: pointer; border: 1px solid transparent; }
+        .hand-piece.selected { background: yellow; border-radius: 3px; }
+
+        .board-wrapper { position: relative; }
+        .board {
+            display: grid; grid-template-columns: repeat(9, var(--cell-size));
+            background: var(--board-bg); border: 2px solid #333;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
         .board.rotated { transform: rotate(180deg); }
-        .cell { width: var(--cell-size); height: var(--cell-size); border: 0.5px solid #333; display: flex; align-items: center; justify-content: center; font-size: calc(var(--cell-size) * 0.7); cursor: pointer; user-select: none; }
+        .cell {
+            width: var(--cell-size); height: var(--cell-size);
+            border: 0.5px solid #333; display: flex;
+            align-items: center; justify-content: center;
+            font-size: calc(var(--cell-size) * 0.7); cursor: pointer;
+        }
         .cell.selected { background: rgba(255, 255, 0, 0.5); }
         .cell.last-move { background: rgba(255, 100, 0, 0.2); }
-        
-        /* 駒の向き制御 */
         .p-gote { transform: rotate(180deg); }
         .board.rotated .cell:not(.p-gote) { transform: rotate(180deg); }
         .board.rotated .p-gote { transform: rotate(0deg); }
 
-        .sidebar { width: 100%; max-width: 300px; display: flex; flex-direction: column; height: 450px; }
-        #kifu-list { flex-grow: 1; overflow-y: auto; background: white; border: 1px solid #ccc; padding: 8px; font-family: monospace; font-size: 14px; }
-        .kifu-line { cursor: pointer; padding: 2px; border-bottom: 1px solid #eee; }
-        .kifu-line.active { background: #e7f3ff; font-weight: bold; }
-        
-        .status-msg { height: 30px; color: red; font-weight: bold; text-align: center; margin-top: 5px; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; margin-top: 5px; width: 100%; }
-        .playback-controls { grid-column: span 2; display: flex; justify-content: space-between; gap: 2px; }
-        .playback-controls button { flex: 1; padding: 8px; font-size: 12px; }
-        button { padding: 10px; cursor: pointer; background: #fff; border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 13px; }
-        .btn-undo { background: #fff3cd; color: #856404; }
-        .btn-resign { background: #f8d7da; color: #721c24; }
+        .status-msg { height: 20px; color: red; font-weight: bold; font-size: 14px; text-align: center; }
+
+        /* 下部エリア：棋譜と操作 */
+        .bottom-area {
+            width: 100%; max-width: 500px; display: flex; flex-direction: column;
+            gap: 5px; margin-top: 5px;
+        }
+        #kifu-list {
+            height: 60px; overflow-y: auto; background: white;
+            border: 1px solid #ccc; font-size: 12px; padding: 4px;
+            display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start;
+        }
+        .kifu-line { cursor: pointer; padding: 2px 4px; border: 1px solid #eee; border-radius: 3px; }
+        .kifu-line.active { background: #e7f3ff; border-color: #2196f3; }
+
+        .controls {
+            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+        }
+        .playback-row { grid-column: span 4; display: flex; gap: 2px; }
+        button {
+            padding: 8px 2px; cursor: pointer; background: #fff;
+            border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 11px;
+        }
+        .btn-undo { background: #fff3cd; }
+        .btn-resign { background: #f8d7da; }
         .btn-save { background: #28a745; color: white; border: none; }
     </style>
 </head>
 <body>
 
 <div class="info-area">
-    <input type="text" id="event" placeholder="棋戦名">
+    <input type="text" id="event" placeholder="棋戦">
     <input type="date" id="date">
-    <input type="text" id="sente" placeholder="先手 氏名">
-    <input type="text" id="gote" placeholder="後手 氏名">
+    <input type="text" id="sente" placeholder="先手">
+    <input type="text" id="gote" placeholder="後手">
 </div>
 
 <div class="game-container">
-    <div class="komadai" id="hand-gote"><h4>後手</h4><div class="hand-container"></div></div>
-    <div style="display:flex; flex-direction:column; align-items:center;">
-        <div class="status-msg" id="msg">先手の手番です</div>
+    <div class="komadai" id="hand-gote"><h4>後</h4><div class="hand-container"></div></div>
+    
+    <div class="board-wrapper">
+        <div class="status-msg" id="msg">先手番</div>
         <div id="board" class="board"></div>
     </div>
-    <div class="komadai" id="hand-sente"><h4>先手</h4><div class="hand-container"></div></div>
-    <div class="sidebar">
-        <strong>指し手リスト</strong>
-        <div id="kifu-list"></div>
-        <div class="controls">
-            <div class="playback-controls">
-                <button onclick="jumpTo(0)">|◀</button>
-                <button onclick="prevMove()">◀</button>
-                <button onclick="nextMove()">▶</button>
-                <button onclick="jumpTo(history.length - 1)">▶|</button>
-            </div>
-            <button class="btn-undo" onclick="undoMove()">一手戻す</button>
-            <button onclick="toggleRotate()">盤面回転</button>
-            <button class="btn-resign" onclick="resignGame()">投了</button>
-            <button class="btn-save" onclick="downloadKIF()">KIF保存</button>
-            <button onclick="location.reload()" style="grid-column: span 2;">リセット</button>
+
+    <div class="komadai" id="hand-sente"><h4>先</h4><div class="hand-container"></div></div>
+</div>
+
+<div class="bottom-area">
+    <div id="kifu-list"></div>
+    <div class="controls">
+        <div class="playback-row">
+            <button onclick="jumpTo(0)" style="flex:1">|◀</button>
+            <button onclick="prevMove()" style="flex:1">◀</button>
+            <button onclick="nextMove()" style="flex:1">▶</button>
+            <button onclick="jumpTo(history.length - 1)" style="flex:1">▶|</button>
         </div>
+        <button class="btn-undo" onclick="undoMove()">一手戻す</button>
+        <button onclick="toggleRotate()">回転</button>
+        <button class="btn-resign" onclick="resignGame()">投了</button>
+        <button class="btn-save" onclick="downloadKIF()">保存</button>
     </div>
 </div>
 
@@ -151,7 +202,7 @@
             if (count > 0) {
                 const el = document.createElement('div');
                 el.className = `hand-piece ${owner==='gote'?'p-gote':''} ${selected?.type==='hand' && selected.p===p && selected.owner===owner ? 'selected' : ''}`;
-                el.innerHTML = `${p}<sub>${count > 1 ? count : ''}</sub>`;
+                el.innerHTML = `${p}${count > 1 ? count : ''}`;
                 if (!result && currentIndex === history.length - 1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); };
                 container.appendChild(el);
             }
@@ -219,6 +270,7 @@
     function isKingUnderAttack(targetBoard, owner) {
         let kr, kc;
         for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (targetBoard[r][c]?.owner === owner && (targetBoard[r][c].p === '玉' || targetBoard[r][c].p === '王')) { kr = r; kc = c; }
+        if (kr === undefined) return false;
         const opp = owner === 'sente' ? 'gote' : 'sente';
         for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (targetBoard[r][c]?.owner === opp && canMove(targetBoard, r, c, kr, kc, opp)) return true;
         return false;
@@ -239,7 +291,7 @@
             board[fr][fc] = null;
         }
         board[tr][tc] = { p: finalPiece, owner: turn };
-        const moveStr = `${history.length} ${"９８７６５４３２１"[tc]}${"一二三四五六七八九"[tr]}${finalPiece}${suffix}${isDrop?'':'('+(9-fc)+''+(fr+1)+')'}`;
+        const moveStr = `${history.length} ${"９８７６５４３２１"[tc]}${"一二三四五六七八九"[tr]}${finalPiece}${suffix}`;
         history[currentIndex].lastPos = {r: tr, c: tc};
         turn = turn === 'sente' ? 'gote' : 'sente';
         saveHistory(moveStr);
@@ -248,7 +300,7 @@
 
     function resignGame() {
         if (result || history.length < 2) return;
-        if (!confirm(`${turn === 'sente' ? '先手' : '後手'}が投了しますか？`)) return;
+        if (!confirm("投了しますか？")) return;
         result = (turn === 'sente') ? 'gote_win' : 'sente_win';
         saveHistory(`${history.length} 投了`);
         render();
@@ -286,11 +338,11 @@
 
     function updateStatus() {
         const msg = document.getElementById('msg');
-        if (result) { msg.textContent = `対局終了：${result === 'sente_win' ? '先手の勝ち' : '後手の勝ち'}`; return; }
+        if (result) { msg.textContent = `${result === 'sente_win' ? '先手' : '後手'}勝`; return; }
         const state = history[currentIndex];
-        msg.textContent = `${state.turn === 'sente' ? '先手' : '後手'}の手番です`;
-        if (isKingUnderAttack(state.board, state.turn)) msg.textContent += " 【王手！】";
-        if (currentIndex < history.length - 1) msg.textContent = "（棋譜閲覧中）";
+        msg.textContent = `${state.turn === 'sente' ? '先手' : '後手'}番`;
+        if (isKingUnderAttack(state.board, state.turn)) msg.textContent += "【王手】";
+        if (currentIndex < history.length - 1) msg.textContent = "閲覧中";
     }
 
     function downloadKIF() {
@@ -300,7 +352,7 @@
         let out = `V2.2\n棋戦：${document.getElementById('event').value || "無題"}\n開始日時：${document.getElementById('date').value.replace(/-/g,'/')}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n`;
         out += history.slice(1).map(h => h.moveStr).join('\n') + '\n';
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "kifu.kif"; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shogi.kif"; a.click();
     }
 
     init();
