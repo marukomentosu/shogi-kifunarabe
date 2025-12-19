@@ -3,14 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Input Master</title>
+    <title>HTML将棋 Ultra - Final Control</title>
     <style>
         :root {
             --bg-color: #fdf5e6;
             --board-bg: #e3b062;
             --cell-size: min(10.5vw, 6.2vh, 55px);
         }
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        /* ダブルタップズームを防止し、操作を快適にする */
+        * { 
+            box-sizing: border-box; 
+            -webkit-tap-highlight-color: transparent; 
+            touch-action: manipulation; 
+        }
         body {
             font-family: 'Hiragino Mincho ProN', serif;
             display: flex; flex-direction: column;
@@ -84,16 +89,16 @@
             background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center;
         }
         .modal-content {
-            background: white; padding: 20px; border-radius: 12px; width: 90%; max-width: 400px;
-            display: flex; flex-direction: column; gap: 12px;
+            background: white; padding: 15px; border-radius: 12px; width: 90%; max-width: 400px;
+            display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow-y: auto;
         }
-        .modal-content label { font-size: 12px; color: #666; margin-bottom: -8px; }
-        .modal-content input { padding: 12px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-content label { font-size: 11px; color: #666; margin-bottom: -6px; font-weight: bold; }
+        .modal-content input { padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
         .date-input-group { display: flex; gap: 5px; }
         .date-input-group input[type="text"] { flex: 1; }
         .date-input-group input[type="date"] { width: 45px; padding: 5px; }
         
-        #modal-footer { display: flex; gap: 10px; margin-top: 10px; }
+        #modal-footer { display: flex; gap: 10px; margin-top: 5px; }
         .btn-confirm-save { background: #28a745; color: white; flex: 1; }
         .btn-close-setting { background: #2196f3; color: white; flex: 1; }
     </style>
@@ -102,20 +107,26 @@
 
 <div id="modal-overlay">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 id="modal-title">対局情報の確認</h3>
+        <h3 id="modal-title" style="margin: 0 0 5px 0;">対局情報の確認</h3>
+        
         <label>棋戦名</label>
         <input type="text" id="event" placeholder="例：HTMLマン杯">
         
-        <label>対局日（直接入力 or 右のカレンダー）</label>
+        <label>対局日（直接入力 / 右端ボタンで選択）</label>
         <div class="date-input-group">
             <input type="text" id="date-text" placeholder="2025/12/19">
             <input type="date" id="date-picker" onchange="document.getElementById('date-text').value = this.value.replace(/-/g,'/')">
         </div>
 
-        <label>先手</label>
+        <label>先手氏名</label>
         <input type="text" id="sente" placeholder="氏名">
-        <label>後手</label>
+        <label>後手氏名</label>
         <input type="text" id="gote" placeholder="氏名">
+
+        <div id="filename-area" style="display:none; flex-direction:column; gap:10px;">
+            <label style="color: #d9534f;">保存ファイル名 (.kifは自動付与)</label>
+            <input type="text" id="filename-input" placeholder="shogi_record">
+        </div>
 
         <div id="modal-footer">
             <button class="btn-close-setting" onclick="closeSettings()">閉じる</button>
@@ -149,12 +160,11 @@
         <button class="btn-settings" onclick="openSettings('info')">設定</button>
         <button class="btn-resign" onclick="resignGame()">投了</button>
         <button class="btn-save" onclick="openSettings('save')" style="grid-column: span 4;">棋譜を保存する</button>
-        <button onclick="location.reload()" style="grid-column: span 4; padding: 5px; font-size: 10px; color: #999; border: none; background: transparent;">盤面リセット</button>
     </div>
 </div>
 
 <script>
-    // --- 既存の駒の動き定義（継承） ---
+    // --- 駒の定義（継承） ---
     const P_MOVE = {
         '歩': { m: [[-1, 0]], up: 'と' }, '香': { m: [[-10, 0]], up: '杏' }, '桂': { m: [[-2, -1], [-2, 1]], up: '圭' },
         '銀': { m: [[-1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]], up: '全' }, '金': { m: [[-1, 0], [-1, -1], [-1, 1], [0, -1], [0, 1], [1, 0]], up: null },
@@ -183,7 +193,6 @@
         l1.forEach((p, c) => board[8][c] = {p: p==='玉'?'玉':p, owner:'sente'});
         ['歩','香','桂','銀','金','角','飛'].forEach(p => { hands.sente[p] = 0; hands.gote[p] = 0; });
         
-        // 今日の日付を初期値にセット
         const now = new Date();
         document.getElementById('date-text').value = now.getFullYear() + "/" + (now.getMonth()+1).toString().padStart(2,'0') + "/" + now.getDate().toString().padStart(2,'0');
         
@@ -191,7 +200,6 @@
         render();
     }
 
-    // --- ロジック関数群（継承） ---
     function saveHistory(moveStr) {
         history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null, turn, moveStr });
         currentIndex = history.length - 1;
@@ -339,19 +347,25 @@
         document.getElementById('main-container').classList.toggle('rotated');
     }
 
-    // --- 新規：設定モーダル制御 ---
+    // --- モーダル・ファイル名管理 ---
     function openSettings(mode) {
         const overlay = document.getElementById('modal-overlay');
         const title = document.getElementById('modal-title');
+        const fnameArea = document.getElementById('filename-area');
         const saveBtn = document.getElementById('save-final-btn');
         
         overlay.style.display = 'flex';
         
         if (mode === 'save') {
-            title.textContent = "棋譜保存の確認";
+            title.textContent = "棋譜を保存します";
+            fnameArea.style.display = 'flex';
+            const now = new Date();
+            const defaultName = `shogi_${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+            document.getElementById('filename-input').value = defaultName;
             saveBtn.style.display = 'block';
         } else {
             title.textContent = "対局設定";
+            fnameArea.style.display = 'none';
             saveBtn.style.display = 'none';
         }
     }
@@ -383,17 +397,18 @@
         if (currentIndex < history.length - 1) msg.textContent = "閲覧中";
     }
 
-    // --- 棋譜保存の実行 ---
     function executeDownload() {
         let sn = document.getElementById('sente').value || "先手";
         let gn = document.getElementById('gote').value || "後手";
+        let fn = document.getElementById('filename-input').value || "shogi_record";
+        
         if (result === 'sente_win') { sn += "〇"; gn += "×"; } else if (result === 'gote_win') { sn += "×"; gn += "〇"; }
         
         let out = `V2.2\n棋戦：${document.getElementById('event').value || "無題"}\n開始日時：${document.getElementById('date-text').value}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n`;
         out += history.slice(1).map(h => h.moveStr).join('\n') + '\n';
         
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `shogi_${new Date().getTime()}.kif`;
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fn}.kif`;
         a.click();
         closeSettings();
     }
