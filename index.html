@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Pro Kifu Support</title>
+    <title>HTML将棋 Ultra - Pro Export</title>
     <style>
         :root {
             --bg-deep: #121212; --bg-panel: #1e1e1e; --board-dark: #3a2a1d;
@@ -12,44 +12,29 @@
             --btn-border: #444444; --cell-size: min(10.5vw, 5.8vh, 50px);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
-        body {
-            font-family: 'Hiragino Mincho ProN', serif; display: flex; flex-direction: column;
-            height: 100dvh; margin: 0; background: var(--bg-deep); color: var(--text-main); overflow: hidden; padding: 4px;
-        }
+        body { font-family: 'Hiragino Mincho ProN', serif; display: flex; flex-direction: column; height: 100dvh; margin: 0; background: var(--bg-deep); color: var(--text-main); overflow: hidden; padding: 4px; }
         .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 4px; min-height: 0; }
         .game-container.rotated { flex-direction: column-reverse; }
-        .komadai {
-            width: 98%; max-width: 500px; height: 50px; background: var(--bg-panel); border: 1px solid var(--btn-border);
-            display: flex; align-items: center; padding: 0 10px; border-radius: 8px;
-        }
+        .komadai { width: 98%; max-width: 500px; height: 50px; background: var(--bg-panel); border: 1px solid var(--btn-border); display: flex; align-items: center; padding: 0 10px; border-radius: 8px; }
         .player-name { font-size: 13px; font-weight: bold; margin-right: 8px; color: var(--text-accent); }
         .hand-container { display: flex; gap: 6px; flex: 1; overflow-x: auto; align-items: center; }
         .hand-piece { font-size: 22px; cursor: pointer; color: #fdf5e6; transition: transform 0.2s; display: inline-block; }
         .p-flip { transform: rotate(180deg); }
         .hand-piece.selected { background: var(--selected-bg); box-shadow: 0 0 12px var(--text-accent); transform: scale(1.25); }
-        .hand-piece.selected.p-flip { transform: rotate(180deg) scale(1.25); }
         .board-wrapper { display: flex; flex-direction: column; align-items: center; }
         .status-msg { height: 20px; color: var(--text-accent); font-weight: bold; font-size: 14px; margin-bottom: 2px; }
         .board { display: grid; grid-template-columns: repeat(9, var(--cell-size)); background: var(--board-dark); border: 2px solid #000; }
         .board.rotated { transform: rotate(180deg); }
-        .cell {
-            width: var(--cell-size); height: var(--cell-size); border: 0.5px solid var(--cell-border);
-            display: flex; align-items: center; justify-content: center; font-size: calc(var(--cell-size) * 0.7);
-            cursor: pointer; color: #fdf5e6; position: relative;
-        }
+        .cell { width: var(--cell-size); height: var(--cell-size); border: 0.5px solid var(--cell-border); display: flex; align-items: center; justify-content: center; font-size: calc(var(--cell-size) * 0.7); cursor: pointer; color: #fdf5e6; position: relative; }
         .cell.selected { background: var(--selected-bg); }
-        .cell.last-move { background: rgba(255, 100, 0, 0.15); }
+        .cell.last-move { background: rgba(255, 100, 0, 0.2); }
         .legal-dot { width: 12px; height: 12px; background: rgba(0, 255, 150, 0.4); border-radius: 50%; position: absolute; pointer-events: none; }
-        
         #kifu-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.92); z-index: 200; flex-direction: column; padding: 15px; }
         #kifu-list { flex: 1; overflow-y: auto; background: #000; border-radius: 8px; padding: 8px; display: flex; flex-wrap: wrap; gap: 5px; }
         .kifu-line { cursor: pointer; padding: 6px 10px; background: #222; border-radius: 4px; color: #aaa; font-size: 13px; }
         .kifu-line.active { background: var(--text-accent); color: #000; }
-        .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
-        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        .nav-group { grid-column: span 4; display: flex; gap: 4px; }
+        .controls { width: 100%; max-width: 500px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; margin-top: 4px; }
         button { padding: 10px 2px; cursor: pointer; background: var(--btn-bg); border: 1px solid var(--btn-border); border-radius: 6px; color: var(--text-main); font-weight: bold; font-size: 11px; }
-        
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 300; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg-panel); padding: 15px; border-radius: 12px; width: 90%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; }
         .modal-content input { background: #000; border: 1px solid var(--btn-border); padding: 12px; color: var(--text-main); border-radius: 6px; width: 100%; }
@@ -66,7 +51,7 @@
 <div id="modal-overlay">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 id="modal-title" style="margin:0; color:var(--text-accent);">対局設定</h3>
-        <div><label style="font-size:11px;">棋戦名</label><input type="text" id="event" placeholder="練習対局"></div>
+        <div><label style="font-size:11px;">棋戦名</label><input type="text" id="event" placeholder="第36期王将戦一次予選"></div>
         <div><label style="font-size:11px;">対局日</label><input type="text" id="date-text"></div>
         <div style="display:flex; gap:5px;"><input type="text" id="sente-input" placeholder="先手" style="flex:1"><input type="text" id="gote-input" placeholder="後手" style="flex:1"></div>
         <div id="filename-area" style="display:none;"><label style="font-size:11px;">ファイル名</label><input type="text" id="filename-input"></div>
@@ -80,16 +65,14 @@
     <div class="komadai" id="hand-sente"><div class="player-name" id="name-display-sente">先手</div><div class="hand-container"></div></div>
 </div>
 
-<div class="bottom-area">
+<div class="controls">
+    <button onclick="jumpTo(0)">|◀</button><button onclick="prevMove()" style="grid-column: span 1.5">◀ 前へ</button><button onclick="nextMove()" style="grid-column: span 1.5">次へ ▶</button><button onclick="jumpTo(history.length - 1)">▶|</button>
+    <button style="color:var(--text-accent)" onclick="undoMove()">一手戻す</button><button onclick="toggleRotate()">盤反転</button><button onclick="toggleKifu(true)">棋譜</button><button style="color:#99ccff" onclick="resetGame()">最初から</button>
+    <button style="grid-column: span 2;" onclick="openSettings('info')">対局設定</button>
     <input type="file" id="kifu-import-input" style="display:none" accept=".kif" onchange="importKifu(event)">
-    <div class="controls">
-        <div class="nav-group"><button onclick="jumpTo(0)">|◀</button><button onclick="prevMove()" style="flex:1.5">◀ 前へ</button><button onclick="nextMove()" style="flex:1.5">次へ ▶</button><button onclick="jumpTo(history.length - 1)">▶|</button></div>
-        <button style="color:var(--text-accent)" onclick="undoMove()">一手戻す</button><button onclick="toggleRotate()">盤反転</button><button onclick="toggleKifu(true)">棋譜</button><button style="color:#99ccff" onclick="resetGame()">最初から</button>
-        <button style="grid-column: span 2;" onclick="openSettings('info')">対局設定</button>
-        <button style="grid-column: span 2; background:#444400;" onclick="document.getElementById('kifu-import-input').click()">プロ棋譜を取込</button>
-        <button style="grid-column: span 2; color:#ff6666" onclick="resignGame()">投了</button>
-        <button style="grid-column: span 2; background:#114422; color:#66ff99;" onclick="openSettings('save')">棋譜を保存 (.kif)</button>
-    </div>
+    <button style="grid-column: span 2; background:#444400;" onclick="document.getElementById('kifu-import-input').click()">プロ棋譜を取込</button>
+    <button style="grid-column: span 2; color:#ff6666" onclick="resignGame()">投了</button>
+    <button style="grid-column: span 2; background:#114422; color:#66ff99;" onclick="openSettings('save')">プロ形式で保存 (.kif)</button>
 </div>
 
 <script>
@@ -117,17 +100,16 @@
         l1.forEach((p, c) => board[8][c] = {p: p==='玉'?'玉':p, owner:'sente'});
         turn = 'sente'; selected = null; history = []; result = null;
         const n = new Date(); document.getElementById('date-text').value = `${n.getFullYear()}/${(n.getMonth()+1).toString().padStart(2,'0')}/${n.getDate().toString().padStart(2,'0')}`;
-        saveHistory("開始"); render();
+        saveHistory(null, null, null, null, "開始"); render();
     }
 
-    // --- インポート（解析）強化版 ---
+    // --- インポート（解析） ---
     function importKifu(e) {
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
         reader.onload = function(event) {
             const lines = event.target.result.split('\n');
-            init(); // 初期化
-
+            init();
             lines.forEach(line => {
                 const l = line.trim();
                 if (l.startsWith('先手：')) document.getElementById('sente-input').value = l.split(/[：:]/)[1].trim();
@@ -135,132 +117,59 @@
                 if (l.startsWith('棋戦：')) document.getElementById('event').value = l.split(/[：:]/)[1].trim();
             });
             syncDisplayNames();
-
             for (let line of lines) {
                 const l = line.trim();
-                // 正規表現: 手数, 座標(同含む), 駒, (移動元座標) 
                 const match = l.match(/^\d+\s+([１-９同][一二三四五六七八九　]+)([^(\s]+)(?:\((\d)(\d)\))?/);
-                
                 if (!match) { if (l.includes('投了')) applyResignResult(); continue; }
-
-                let tr, tc;
-                const posStr = match[1]; // "７六" or "同　"
-                const pieceSuffix = match[2]; // "歩" or "銀成"
-                const srcX = match[3], srcY = match[4]; // "(77)" -> 7, 7
-
-                // 移動先の特定
-                if (posStr.includes('同')) {
-                    const last = history[history.length-1].lastPos;
-                    tr = last.r; tc = last.c;
-                } else {
-                    tc = "９８７６５４３２１".indexOf(posStr[0]);
-                    tr = "一二三四五六七八九".indexOf(posStr[1]);
-                }
-
-                // 駒の名前から基本種を特定
+                let tr, tc; const posStr = match[1], pieceSuffix = match[2], srcX = match[3], srcY = match[4];
+                if (posStr.includes('同')) { const last = history[history.length-1].lastPos; tr = last.r; tc = last.c; }
+                else { tc = "９８７６５４３２１".indexOf(posStr[0]); tr = "一二三四五六七八九".indexOf(posStr[1]); }
                 const basePiece = pieceSuffix[0];
-
-                if (pieceSuffix.includes('打')) {
-                    executeMove(null, null, tr, tc, basePiece, true, true);
-                } else if (srcX && srcY) {
-                    // 移動元が明示されている場合 (77)
-                    const fr = parseInt(srcY) - 1;
-                    const fc = 9 - parseInt(srcX);
-                    executeMove(fr, fc, tr, tc, board[fr][fc].p, false, true);
-                } else {
-                    // 移動元がない場合、動ける駒を探す
+                if (pieceSuffix.includes('打')) executeMove(null, null, tr, tc, basePiece, true, true);
+                else if (srcX && srcY) { const fr = parseInt(srcY)-1, fc = 9-parseInt(srcX); executeMove(fr, fc, tr, tc, board[fr][fc].p, false, true); }
+                else {
                     let found = false;
-                    for (let r=0; r<9; r++) {
-                        for (let c=0; c<9; c++) {
-                            const p = board[r][c];
-                            if (p && p.owner === turn && canMove(board, r, c, tr, tc, turn)) {
-                                if (p.p === basePiece || P_MOVE[p.p].up === basePiece) {
-                                    executeMove(r, c, tr, tc, p.p, false, true);
-                                    found = true; break;
-                                }
-                            }
+                    for (let r=0; r<9; r++) for (let c=0; c<9; c++) {
+                        const p = board[r][c];
+                        if (p && p.owner === turn && canMove(board, r, c, tr, tc, turn) && (p.p===basePiece || P_MOVE[p.p].up===basePiece)) {
+                            executeMove(r, c, tr, tc, p.p, false, true); found = true; break;
                         }
-                        if (found) break;
                     }
                 }
             }
-            render();
-            alert("プロ棋譜の読み込みに成功しました。");
+            render(); alert("棋譜を読み込みました。");
         };
-        reader.readAsText(file, "Shift_JIS"); // KIFはShift_JISが多いため
+        reader.readAsText(file, "Shift_JIS");
     }
 
-    // --- 以下、既存の安定した機能群 ---
-    function canMove(b, fr, fc, tr, tc, owner) {
-        const pData = b[fr][fc]; if (!pData) return false;
-        const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
-        const moves = P_MOVE[pData.p].m, mult = owner === 'sente' ? 1 : -1;
-        for (let [mr, mc] of moves) {
-            const trgR = mr * mult, trgC = mc * mult;
-            if (Math.abs(mr) < 10 && Math.abs(mc) < 10) { if (tr - fr === trgR && tc - fc === trgC) return true; }
-            else {
-                const sR = Math.sign(trgR), sC = Math.sign(trgC);
-                for (let i = 1; i < 9; i++) {
-                    const currR = fr + sR * i, currC = fc + sC * i;
-                    if (currR < 0 || currR > 8 || currC < 0 || currC > 8) break;
-                    if (currR === tr && currC === tc) return true;
-                    if (b[currR][currC]) break;
-                }
-            }
-        }
-        return false;
-    }
+    // --- エクスポート（保存）強化版 ---
+    function executeDownload() {
+        const sente = document.getElementById('sente-input').value || "先手";
+        const gote = document.getElementById('gote-input').value || "後手";
+        const event = document.getElementById('event').value || "対局";
+        const date = document.getElementById('date-text').value;
 
-    function render() {
-        const state = history[currentIndex];
-        const boardEl = document.getElementById('board'); boardEl.innerHTML = '';
-        const lastP = (currentIndex > 0) ? state.lastPos : null;
-        const legalMoves = getLegalMoves();
-        for (let r = 0; r < 9; r++) {
-            for (let c = 0; c < 9; c++) {
-                const cell = document.createElement('div');
-                cell.className = `cell ${selected?.type==='board' && selected?.r===r && selected?.c===c ? 'selected' : ''} ${lastP?.r===r && lastP?.c===c ? 'last-move' : ''}`;
-                const d = state.board[r][c];
-                if (d) { 
-                    const s = document.createElement('span'); s.textContent = d.p;
-                    if (d.owner === 'gote') s.className = 'p-flip';
-                    cell.appendChild(s);
-                }
-                if (legalMoves.some(m => m.r === r && m.c === c)) { const dot = document.createElement('div'); dot.className = 'legal-dot'; cell.appendChild(dot); }
-                if (!result && currentIndex === history.length - 1) cell.onclick = () => handleCellClick(r, c);
-                boardEl.appendChild(cell);
-            }
-        }
-        updateHandUI('sente', state.hands.sente); updateHandUI('gote', state.hands.gote);
-        updateStatus();
-    }
+        let out = `#KIF version=2.0 encoding=UTF-8\n`;
+        out += `開始日時：${date}\n棋戦：${event}\n先手：${sente}\n後手：${gote}\n`;
+        out += `手数----指手---------消費時間--\n`;
 
-    function getLegalMoves() {
-        if (!selected || result || currentIndex !== history.length - 1) return [];
-        let moves = [];
-        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) {
-            if (selected.type === 'hand') { if (!board[r][c] && !checkIllegalDrop(selected.p, r, c, true)) moves.push({r, c}); }
-            else { if (canMove(board, selected.r, selected.c, r, c, turn)) moves.push({r, c}); }
-        }
-        return moves;
-    }
+        history.slice(1).forEach((h, i) => {
+            const step = (i + 1).toString().padStart(4, ' ');
+            out += `${step} ${h.moveStr}\n`;
+        });
 
-    function handleCellClick(r, c) {
-        const clicked = board[r][c];
-        if (selected?.type === 'hand') {
-            if (!clicked && !checkIllegalDrop(selected.p, r, c)) executeMove(null, null, r, c, selected.p, true);
-            selected = null;
-        } else if (selected) {
-            if (selected.r === r && selected.c === c) selected = null;
-            else if (canMove(board, selected.r, selected.c, r, c, turn)) { executeMove(selected.r, selected.c, r, c, selected.p); selected = null; }
-            else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
-            else selected = null;
-        } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
-        render();
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
+        a.download = `${document.getElementById('filename-input').value || "shogi"}.kif`;
+        a.click(); closeSettings();
     }
 
     function executeMove(fr, fc, tr, tc, piece, isDrop = false, skipPromoteConfirm = false) {
         let finalPiece = piece, suffix = "";
+        const last = history[currentIndex].lastPos;
+        const isSamePos = last && last.r === tr && last.c === tc;
+        const posStr = isSamePos ? "同　" : "９８７６５４３２１"[tc] + "一二三四五六七八九"[tr];
+
         if (isDrop) { hands[turn][piece]--; suffix = "打"; }
         else {
             if (board[tr][tc]) { const cap = board[tr][tc].p, rev = {'と':'歩','杏':'香','圭':'桂','全':'銀','馬':'角','龍':'飛'}; hands[turn][rev[cap] || cap]++; }
@@ -270,35 +179,63 @@
             board[fr][fc] = null;
         }
         board[tr][tc] = { p: finalPiece, owner: turn };
-        const moveStr = `${history.length} ${"９８７６５４３２１"[tc]}${"一二三四五六七八九"[tr]}${finalPiece}${suffix}`;
-        history[currentIndex].lastPos = {r: tr, c: tc}; 
+        
+        // プロ形式の指し手文字列作成
+        let moveStr = `${posStr}${finalPiece}${suffix}`;
+        if (!isDrop) moveStr += `(${9-fc}${fr+1})`;
+
+        saveHistory(tr, tc, fr, fc, moveStr);
         turn = (turn === 'sente' ? 'gote' : 'sente');
-        saveHistory(moveStr); render();
+        render();
     }
 
-    function applyResignResult() {
-        result = (turn === 'sente' ? 'gote_win' : 'sente_win');
-        saveHistory(`${history.length} 投了`);
-        const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
-        if (result === 'sente_win') { si.value += "○"; gi.value += "×"; }
-        else { si.value += "×"; gi.value += "○"; }
-        syncDisplayNames();
+    function saveHistory(tr, tc, fr, fc, moveStr) {
+        history.push({ 
+            board: JSON.parse(JSON.stringify(board)), 
+            hands: JSON.parse(JSON.stringify(hands)), 
+            lastPos: {r: tr, c: tc},
+            moveStr, turn 
+        });
+        currentIndex = history.length - 1; updateKifuList();
     }
 
-    function resignGame() { if (result || !confirm("投了しますか？")) return; applyResignResult(); render(); }
-    function resetGame() { if (confirm("リセットしますか？")) { const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input'); si.value = si.value.replace(/[○×]$/, ''); gi.value = gi.value.replace(/[○×]$/, ''); syncDisplayNames(); init(); } }
-    function updateHandUI(owner, handData) {
-        const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
-        for (const [p, count] of Object.entries(handData)) if (count > 0) {
-            const el = document.createElement('div'); const isS = (selected?.type === 'hand' && selected.p === p && selected.owner === owner);
-            el.className = `hand-piece ${isS ? 'selected' : ''} ${owner === 'gote' ? 'p-flip' : ''}`;
-            el.innerHTML = `${p}${count > 1 ? count : ''}`;
-            if (!result && currentIndex === history.length - 1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); };
-            container.appendChild(el);
+    // --- 以下、ユーティリティ（変更なし） ---
+    function canMove(b, fr, fc, tr, tc, owner) {
+        const pData = b[fr][fc]; if (!pData) return false;
+        const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
+        const moves = P_MOVE[pData.p].m, mult = owner === 'sente' ? 1 : -1;
+        for (let [mr, mc] of moves) {
+            const trgR = mr * mult, trgC = mc * mult;
+            if (Math.abs(mr) < 10 && Math.abs(mc) < 10) { if (tr-fr === trgR && tc-fc === trgC) return true; }
+            else { const sR = Math.sign(trgR), sC = Math.sign(trgC); for (let i=1; i<9; i++) { const cR=fr+sR*i, cC=fc+sC*i; if (cR<0||cR>8||cC<0||cC>8) break; if (cR===tr && cC===tc) return true; if (b[cR][cC]) break; } }
         }
+        return false;
     }
+    function render() {
+        const state = history[currentIndex]; const boardEl = document.getElementById('board'); boardEl.innerHTML = '';
+        const lastP = (currentIndex > 0) ? state.lastPos : null; const legalMoves = getLegalMoves();
+        for (let r=0; r<9; r++) for (let c=0; c<9; c++) {
+            const cell = document.createElement('div'); cell.className = `cell ${selected?.type==='board'&&selected.r===r&&selected.c===c?'selected':''} ${lastP?.r===r&&lastP.c===c?'last-move':''}`;
+            const d = state.board[r][c]; if (d) { const s = document.createElement('span'); s.textContent = d.p; if (d.owner === 'gote') s.className = 'p-flip'; cell.appendChild(s); }
+            if (legalMoves.some(m => m.r === r && m.c === c)) { const dot = document.createElement('div'); dot.className = 'legal-dot'; cell.appendChild(dot); }
+            if (!result && currentIndex === history.length - 1) cell.onclick = () => handleCellClick(r, c);
+            boardEl.appendChild(cell);
+        }
+        updateHandUI('sente', state.hands.sente); updateHandUI('gote', state.hands.gote); updateStatus();
+    }
+    function handleCellClick(r, c) {
+        const clicked = board[r][c];
+        if (selected?.type === 'hand') { if (!clicked && !checkIllegalDrop(selected.p, r, c)) executeMove(null, null, r, c, selected.p, true); selected = null; }
+        else if (selected) { if (selected.r === r && selected.c === c) selected = null; else if (canMove(board, selected.r, selected.c, r, c, turn)) { executeMove(selected.r, selected.c, r, c, selected.p); selected = null; } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' }; else selected = null; }
+        else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
+        render();
+    }
+    function getLegalMoves() { if (!selected || result || currentIndex !== history.length-1) return []; let moves = []; for (let r=0; r<9; r++) for (let c=0; c<9; c++) { if (selected.type === 'hand') { if (!board[r][c] && !checkIllegalDrop(selected.p, r, c, true)) moves.push({r, c}); } else { if (canMove(board, selected.r, selected.c, r, c, turn)) moves.push({r, c}); } } return moves; }
+    function applyResignResult() { result = (turn==='sente'?'gote_win':'sente_win'); saveHistory(null,null,null,null,"投了"); syncDisplayNames(); }
+    function resignGame() { if (result || !confirm("投了しますか？")) return; applyResignResult(); render(); }
+    function resetGame() { if (confirm("リセットしますか？")) init(); }
+    function updateHandUI(owner, handData) { const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = ''; for (const [p, count] of Object.entries(handData)) if (count > 0) { const el = document.createElement('div'); el.className = `hand-piece ${owner==='gote'?'p-flip':''}`; el.innerHTML = `${p}${count>1?count:''}`; if (!result && currentIndex === history.length-1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); }; container.appendChild(el); } }
     function selectHand(p, owner) { if (turn === owner) { selected = (selected?.p === p) ? null : { type: 'hand', p, owner }; render(); } }
-    function saveHistory(moveStr) { history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? history[history.length-1].lastPos : null, turn, moveStr }); currentIndex = history.length - 1; updateKifuList(); }
     function jumpTo(idx) { currentIndex = idx; selected = null; render(); }
     function prevMove() { if (currentIndex > 0) jumpTo(currentIndex - 1); }
     function nextMove() { if (currentIndex < history.length - 1) jumpTo(currentIndex + 1); }
@@ -310,12 +247,7 @@
     function closeSettings() { syncDisplayNames(); document.getElementById('modal-overlay').style.display='none'; }
     function syncDisplayNames() { document.getElementById('name-display-sente').textContent = document.getElementById('sente-input').value || "先手"; document.getElementById('name-display-gote').textContent = document.getElementById('gote-input').value || "後手"; }
     function undoMove() { if (history.length <= 1) return; history.pop(); board = JSON.parse(JSON.stringify(history[history.length-1].board)); hands = JSON.parse(JSON.stringify(history[history.length-1].hands)); turn = history[history.length-1].turn; result = null; currentIndex = history.length - 1; selected = null; updateKifuList(); render(); }
-    function executeDownload() { let out = `V2.2\n棋戦：${document.getElementById('event').value||"対局"}\n開始日時：${document.getElementById('date-text').value}\n先手：${document.getElementById('sente-input').value||"先手"}\n後手：${document.getElementById('gote-input').value||"後手"}\n手数----指手---------\n` + history.slice(1).map(h=>h.moveStr).join('\n') + '\n'; const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${document.getElementById('filename-input').value||"record"}.kif`; a.click(); closeSettings(); }
-    function checkIllegalDrop(p, r, c, silent = false) {
-        if (p === '歩') for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) { if (!silent) alert("二歩"); return true; }
-        if (((p === '歩' || p === '香') && ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8))) || (p === '桂' && ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7)))) { if (!silent) alert("行き所なし"); return true; }
-        return false;
-    }
+    function checkIllegalDrop(p, r, c, silent = false) { if (p === '歩') for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) { if (!silent) alert("二歩"); return true; } if (((p === '歩' || p === '香') && ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8))) || (p === '桂' && ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7)))) { if (!silent) alert("行き所なし"); return true; } return false; }
 
     init();
 </script>
