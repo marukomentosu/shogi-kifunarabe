@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Pro Export</title>
+    <title>HTML将棋 Ultra - KIF Date Converter</title>
     <style>
         :root {
             --bg-deep: #121212; --bg-panel: #1e1e1e; --board-dark: #3a2a1d;
@@ -51,8 +51,8 @@
 <div id="modal-overlay">
     <div class="modal-content" onclick="event.stopPropagation()">
         <h3 id="modal-title" style="margin:0; color:var(--text-accent);">対局設定</h3>
-        <div><label style="font-size:11px;">棋戦名</label><input type="text" id="event" placeholder="第36期王将戦一次予選"></div>
-        <div><label style="font-size:11px;">対局日</label><input type="text" id="date-text"></div>
+        <div><label style="font-size:11px;">棋戦名</label><input type="text" id="event" placeholder="棋戦名"></div>
+        <div><label style="font-size:11px;">対局日 (西暦表記に自動変換されます)</label><input type="text" id="date-text"></div>
         <div style="display:flex; gap:5px;"><input type="text" id="sente-input" placeholder="先手" style="flex:1"><input type="text" id="gote-input" placeholder="後手" style="flex:1"></div>
         <div id="filename-area" style="display:none;"><label style="font-size:11px;">ファイル名</label><input type="text" id="filename-input"></div>
         <div style="display:flex; gap:8px;"><button onclick="closeSettings()" style="flex:1">キャンセル</button><button id="save-final-btn" style="flex:1; background:#114422; color:#66ff99; display:none;" onclick="executeDownload()">保存</button></div>
@@ -88,6 +88,23 @@
 
     let board, hands, turn, selected, history, currentIndex, result, isRotated = false;
 
+    // --- 和暦から西暦への変換関数 ---
+    function parseDate(dateStr) {
+        if (!dateStr) return "";
+        let s = dateStr.trim();
+        const eras = { 'R': 2018, 'H': 1988, 'S': 1925, 'T': 1911, 'M': 1867, '令和': 2018, '平成': 1988, '昭和': 1925, '大正': 1911, '明治': 1867 };
+        
+        // 記号や漢字の和暦を抽出 (例: S61, 昭和61)
+        const match = s.match(/^([MTSHR]|明治|大正|昭和|平成|令和)(\d+|元)(.*)/i);
+        if (match) {
+            const baseYear = eras[match[1].toUpperCase()];
+            const yearNum = match[2] === '元' ? 1 : parseInt(match[2]);
+            const rest = match[3].replace(/[年月日]/g, '/').replace(/\/$/, '');
+            return (baseYear + yearNum) + rest;
+        }
+        return s; // 既に西暦っぽい場合はそのまま
+    }
+
     function init() {
         board = Array(9).fill().map(() => Array(9).fill(null));
         hands = { sente: { '歩':0,'香':0,'桂':0,'銀':0,'金':0,'角':0,'飛':0 }, gote: { '歩':0,'香':0,'桂':0,'銀':0,'金':0,'角':0,'飛':0 } };
@@ -103,7 +120,6 @@
         saveHistory(null, null, null, null, "開始"); render();
     }
 
-    // --- インポート（解析） ---
     function importKifu(e) {
         const file = e.target.files[0]; if (!file) return;
         const reader = new FileReader();
@@ -115,6 +131,10 @@
                 if (l.startsWith('先手：')) document.getElementById('sente-input').value = l.split(/[：:]/)[1].trim();
                 if (l.startsWith('後手：')) document.getElementById('gote-input').value = l.split(/[：:]/)[1].trim();
                 if (l.startsWith('棋戦：')) document.getElementById('event').value = l.split(/[：:]/)[1].trim();
+                if (l.startsWith('開始日時：') || l.startsWith('対局日：')) {
+                    const rawDate = l.split(/[：:]/)[1].trim();
+                    document.getElementById('date-text').value = parseDate(rawDate); // ここで変換
+                }
             });
             syncDisplayNames();
             for (let line of lines) {
@@ -137,39 +157,28 @@
                     }
                 }
             }
-            render(); alert("棋譜を読み込みました。");
+            render();
+            alert(`棋譜を読み込みました。\n西暦に変換: ${document.getElementById('date-text').value}`);
         };
         reader.readAsText(file, "Shift_JIS");
     }
 
-    // --- エクスポート（保存）強化版 ---
+    // --- その他、既存ロジック ---
     function executeDownload() {
         const sente = document.getElementById('sente-input').value || "先手";
         const gote = document.getElementById('gote-input').value || "後手";
         const event = document.getElementById('event').value || "対局";
         const date = document.getElementById('date-text').value;
-
-        let out = `#KIF version=2.0 encoding=UTF-8\n`;
-        out += `開始日時：${date}\n棋戦：${event}\n先手：${sente}\n後手：${gote}\n`;
-        out += `手数----指手---------消費時間--\n`;
-
-        history.slice(1).forEach((h, i) => {
-            const step = (i + 1).toString().padStart(4, ' ');
-            out += `${step} ${h.moveStr}\n`;
-        });
-
+        let out = `#KIF version=2.0 encoding=UTF-8\n開始日時：${date}\n棋戦：${event}\n先手：${sente}\n後手：${gote}\n手数----指手---------消費時間--\n`;
+        history.slice(1).forEach((h, i) => { out += `${(i + 1).toString().padStart(4, ' ')} ${h.moveStr}\n`; });
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob);
-        a.download = `${document.getElementById('filename-input').value || "shogi"}.kif`;
-        a.click(); closeSettings();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${document.getElementById('filename-input').value || "shogi"}.kif`; a.click(); closeSettings();
     }
-
     function executeMove(fr, fc, tr, tc, piece, isDrop = false, skipPromoteConfirm = false) {
         let finalPiece = piece, suffix = "";
         const last = history[currentIndex].lastPos;
         const isSamePos = last && last.r === tr && last.c === tc;
         const posStr = isSamePos ? "同　" : "９８７６５４３２１"[tc] + "一二三四五六七八九"[tr];
-
         if (isDrop) { hands[turn][piece]--; suffix = "打"; }
         else {
             if (board[tr][tc]) { const cap = board[tr][tc].p, rev = {'と':'歩','杏':'香','圭':'桂','全':'銀','馬':'角','龍':'飛'}; hands[turn][rev[cap] || cap]++; }
@@ -179,38 +188,12 @@
             board[fr][fc] = null;
         }
         board[tr][tc] = { p: finalPiece, owner: turn };
-        
-        // プロ形式の指し手文字列作成
         let moveStr = `${posStr}${finalPiece}${suffix}`;
         if (!isDrop) moveStr += `(${9-fc}${fr+1})`;
-
-        saveHistory(tr, tc, fr, fc, moveStr);
-        turn = (turn === 'sente' ? 'gote' : 'sente');
-        render();
+        saveHistory(tr, tc, fr, fc, moveStr); turn = (turn === 'sente' ? 'gote' : 'sente'); render();
     }
-
-    function saveHistory(tr, tc, fr, fc, moveStr) {
-        history.push({ 
-            board: JSON.parse(JSON.stringify(board)), 
-            hands: JSON.parse(JSON.stringify(hands)), 
-            lastPos: {r: tr, c: tc},
-            moveStr, turn 
-        });
-        currentIndex = history.length - 1; updateKifuList();
-    }
-
-    // --- 以下、ユーティリティ（変更なし） ---
-    function canMove(b, fr, fc, tr, tc, owner) {
-        const pData = b[fr][fc]; if (!pData) return false;
-        const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
-        const moves = P_MOVE[pData.p].m, mult = owner === 'sente' ? 1 : -1;
-        for (let [mr, mc] of moves) {
-            const trgR = mr * mult, trgC = mc * mult;
-            if (Math.abs(mr) < 10 && Math.abs(mc) < 10) { if (tr-fr === trgR && tc-fc === trgC) return true; }
-            else { const sR = Math.sign(trgR), sC = Math.sign(trgC); for (let i=1; i<9; i++) { const cR=fr+sR*i, cC=fc+sC*i; if (cR<0||cR>8||cC<0||cC>8) break; if (cR===tr && cC===tc) return true; if (b[cR][cC]) break; } }
-        }
-        return false;
-    }
+    function saveHistory(tr, tc, fr, fc, moveStr) { history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: {r: tr, c: tc}, moveStr, turn }); currentIndex = history.length - 1; updateKifuList(); }
+    function canMove(b, fr, fc, tr, tc, owner) { const pData = b[fr][fc]; if (!pData) return false; const dest = b[tr][tc]; if (dest && dest.owner === owner) return false; const moves = P_MOVE[pData.p].m, mult = owner === 'sente' ? 1 : -1; for (let [mr, mc] of moves) { const trgR = mr * mult, trgC = mc * mult; if (Math.abs(mr) < 10 && Math.abs(mc) < 10) { if (tr-fr === trgR && tc-fc === trgC) return true; } else { const sR = Math.sign(trgR), sC = Math.sign(trgC); for (let i=1; i<9; i++) { const cR=fr+sR*i, cC=fc+sC*i; if (cR<0||cR>8||cC<0||cC>8) break; if (cR===tr && cC===tc) return true; if (b[cR][cC]) break; } } } return false; }
     function render() {
         const state = history[currentIndex]; const boardEl = document.getElementById('board'); boardEl.innerHTML = '';
         const lastP = (currentIndex > 0) ? state.lastPos : null; const legalMoves = getLegalMoves();
@@ -223,13 +206,7 @@
         }
         updateHandUI('sente', state.hands.sente); updateHandUI('gote', state.hands.gote); updateStatus();
     }
-    function handleCellClick(r, c) {
-        const clicked = board[r][c];
-        if (selected?.type === 'hand') { if (!clicked && !checkIllegalDrop(selected.p, r, c)) executeMove(null, null, r, c, selected.p, true); selected = null; }
-        else if (selected) { if (selected.r === r && selected.c === c) selected = null; else if (canMove(board, selected.r, selected.c, r, c, turn)) { executeMove(selected.r, selected.c, r, c, selected.p); selected = null; } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' }; else selected = null; }
-        else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
-        render();
-    }
+    function handleCellClick(r, c) { const clicked = board[r][c]; if (selected?.type === 'hand') { if (!clicked && !checkIllegalDrop(selected.p, r, c)) executeMove(null, null, r, c, selected.p, true); selected = null; } else if (selected) { if (selected.r === r && selected.c === c) selected = null; else if (canMove(board, selected.r, selected.c, r, c, turn)) { executeMove(selected.r, selected.c, r, c, selected.p); selected = null; } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' }; else selected = null; } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' }; render(); }
     function getLegalMoves() { if (!selected || result || currentIndex !== history.length-1) return []; let moves = []; for (let r=0; r<9; r++) for (let c=0; c<9; c++) { if (selected.type === 'hand') { if (!board[r][c] && !checkIllegalDrop(selected.p, r, c, true)) moves.push({r, c}); } else { if (canMove(board, selected.r, selected.c, r, c, turn)) moves.push({r, c}); } } return moves; }
     function applyResignResult() { result = (turn==='sente'?'gote_win':'sente_win'); saveHistory(null,null,null,null,"投了"); syncDisplayNames(); }
     function resignGame() { if (result || !confirm("投了しますか？")) return; applyResignResult(); render(); }
