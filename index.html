@@ -3,116 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Name Symbol Sync</title>
+    <title>HTML将棋 Ultra - Dark Edition</title>
     <style>
         :root {
-            --bg-color: #fdf5e6;
-            --board-bg: #e3b062;
+            --bg-deep: #121212;
+            --bg-panel: #1e1e1e;
+            --board-dark: #3a2a1d;
+            --cell-border: #554433;
+            --text-main: #e0e0e0;
+            --text-accent: #ffcc00;
+            --btn-bg: #333333;
+            --btn-border: #444444;
             --cell-size: min(10.5vw, 6.2vh, 55px);
         }
-        * { 
-            box-sizing: border-box; 
-            -webkit-tap-highlight-color: transparent; 
-            touch-action: manipulation; 
-        }
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; touch-action: manipulation; }
+        
         body {
             font-family: 'Hiragino Mincho ProN', serif;
             display: flex; flex-direction: column;
-            height: 100dvh; margin: 0; background: var(--bg-color);
-            overflow: hidden; padding: 5px;
+            height: 100dvh; margin: 0; background: var(--bg-deep);
+            color: var(--text-main); overflow: hidden; padding: 8px;
         }
 
+        /* ゲームコンテナ */
         .game-container {
             flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 4px;
+            align-items: center; justify-content: center; gap: 8px;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .game-container.rotated { flex-direction: column-reverse; }
 
+        /* 駒台 */
         .komadai {
-            width: 98%; max-width: 500px; height: 45px;
-            background: #d2a45d; border: 1px solid #333;
-            display: flex; align-items: center; padding: 0 10px;
-            border-radius: 4px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
+            width: 100%; max-width: 500px; height: 50px;
+            background: var(--bg-panel); border: 1px solid var(--btn-border);
+            display: flex; align-items: center; padding: 0 12px;
+            border-radius: 8px; box-shadow: 0 4px 10px rgba(0,0,0,0.3);
         }
         .player-name {
-            font-size: 13px; font-weight: bold; margin-right: 10px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-            max-width: 120px; color: #222;
+            font-size: 14px; font-weight: bold; margin-right: 12px;
+            color: var(--text-accent); white-space: nowrap; 
+            max-width: 120px; overflow: hidden; text-overflow: ellipsis;
         }
-        .hand-container { display: flex; gap: 5px; flex: 1; }
-        .hand-piece { font-size: 20px; cursor: pointer; transition: transform 0.3s; }
+        .hand-container { display: flex; gap: 6px; flex: 1; overflow-x: auto; }
+        .hand-piece { font-size: 22px; cursor: pointer; color: #fdf5e6; text-shadow: 1px 1px 2px #000; }
 
-        .p-gote { transform: rotate(180deg); }
+        /* 盤面 */
+        .board-wrapper { position: relative; }
+        .status-msg { height: 26px; color: var(--text-accent); font-weight: bold; font-size: 16px; text-align: center; margin-bottom: 4px; }
+        
         .board {
             display: grid; grid-template-columns: repeat(9, var(--cell-size));
-            background: var(--board-bg); border: 2.5px solid #333;
+            background: var(--board-dark); border: 3px solid #000;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 8px 20px rgba(0,0,0,0.5);
         }
         .board.rotated { transform: rotate(180deg); }
 
         .cell {
             width: var(--cell-size); height: var(--cell-size);
-            border: 0.5px solid #333; display: flex;
+            border: 0.5px solid var(--cell-border); display: flex;
             align-items: center; justify-content: center;
             font-size: calc(var(--cell-size) * 0.7); cursor: pointer;
+            color: #fdf5e6; text-shadow: 1px 1px 2px #000;
         }
-        .cell.selected { background: rgba(255, 255, 0, 0.5); }
+        .cell.selected { background: rgba(255, 204, 0, 0.3); }
         .cell.last-move { background: rgba(255, 100, 0, 0.2); }
+        .p-gote { transform: rotate(180deg); }
 
-        .status-msg { height: 22px; color: red; font-weight: bold; font-size: 15px; text-align: center; }
-
-        .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 4px; }
+        /* ボトムエリア */
+        .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 8px; margin-top: auto; }
+        
         #kifu-list {
-            height: 55px; overflow-y: auto; background: white;
-            border: 1px solid #ccc; font-size: 11px; padding: 4px;
-            display: flex; flex-wrap: wrap; gap: 4px;
+            height: 50px; overflow-y: auto; background: #000;
+            border-radius: 6px; font-size: 12px; padding: 6px;
+            display: flex; flex-wrap: wrap; gap: 4px; border: 1px solid var(--btn-border);
         }
-        .kifu-line { cursor: pointer; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; }
-        .kifu-line.active { background: #e7f3ff; border-color: #2196f3; font-weight: bold; }
+        .kifu-line { cursor: pointer; padding: 2px 8px; background: #222; border-radius: 4px; color: #aaa; }
+        .kifu-line.active { background: var(--text-accent); color: #000; font-weight: bold; }
 
-        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
-        button { padding: 10px 2px; cursor: pointer; background: #fff; border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 12px; }
-        .btn-undo { background: #fff3cd; }
-        .btn-resign { background: #f8d7da; }
-        .btn-save { background: #28a745; color: white; border: none; }
+        /* コントロール */
+        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+        .nav-group { grid-column: span 4; display: flex; gap: 4px; }
+        
+        button {
+            padding: 12px 4px; cursor: pointer; background: var(--btn-bg);
+            border: 1px solid var(--btn-border); border-radius: 6px;
+            color: var(--text-main); font-weight: bold; font-size: 13px;
+            transition: all 0.2s;
+        }
+        button:active { transform: scale(0.95); opacity: 0.8; }
+        .btn-undo { background: #443311; color: var(--text-accent); }
+        .btn-resign { background: #441111; color: #ff6666; }
+        .btn-save { background: #114422; color: #66ff99; grid-column: span 4; padding: 14px; margin-top: 4px; border: none; }
 
+        /* モーダル */
         #modal-overlay {
             display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6); z-index: 100; align-items: center; justify-content: center;
+            background: rgba(0,0,0,0.8); z-index: 100; align-items: center; justify-content: center;
         }
         .modal-content {
-            background: white; padding: 15px; border-radius: 12px; width: 92%; max-width: 400px;
-            display: flex; flex-direction: column; gap: 10px; max-height: 90vh; overflow-y: auto;
+            background: var(--bg-panel); color: var(--text-main); padding: 20px; border-radius: 16px;
+            width: 90%; max-width: 400px; display: flex; flex-direction: column; gap: 12px;
+            border: 1px solid var(--btn-border);
         }
-        .modal-content input { padding: 10px; font-size: 15px; border: 1px solid #ccc; border-radius: 4px; }
+        .modal-content input {
+            background: #000; border: 1px solid var(--btn-border); padding: 12px;
+            color: var(--text-main); border-radius: 6px; font-size: 16px;
+        }
     </style>
 </head>
 <body>
 
 <div id="modal-overlay">
     <div class="modal-content" onclick="event.stopPropagation()">
-        <h3 id="modal-title" style="margin:0">対局設定 / 棋譜保存</h3>
-        <label style="font-size:11px">棋戦名</label>
-        <input type="text" id="event" placeholder="例：練習対局">
-        <label style="font-size:11px">対局日</label>
+        <h3 id="modal-title" style="margin:0; color:var(--text-accent)">Settings / Save</h3>
+        <label style="font-size:11px; opacity:0.7">棋戦名</label>
+        <input type="text" id="event" placeholder="Event Name">
+        <label style="font-size:11px; opacity:0.7">対局日</label>
         <div style="display:flex; gap:5px;">
             <input type="text" id="date-text" style="flex:1">
-            <input type="date" id="date-picker" onchange="document.getElementById('date-text').value = this.value.replace(/-/g,'/')">
+            <input type="date" id="date-picker" style="width:45px" onchange="document.getElementById('date-text').value = this.value.replace(/-/g,'/')">
         </div>
-        <label style="font-size:11px">先手氏名</label>
-        <input type="text" id="sente-input" placeholder="氏名を入力">
-        <label style="font-size:11px">後手氏名</label>
-        <input type="text" id="gote-input" placeholder="氏名を入力">
-        
+        <label style="font-size:11px; opacity:0.7">先手 / 後手</label>
+        <div style="display:flex; gap:5px;">
+            <input type="text" id="sente-input" placeholder="先手" style="flex:1">
+            <input type="text" id="gote-input" placeholder="後手" style="flex:1">
+        </div>
         <div id="filename-area" style="display:none; flex-direction:column; gap:5px;">
-            <label style="font-size:11px; color:red">保存ファイル名 (.kif)</label>
+            <label style="font-size:11px; color:var(--text-accent)">保存ファイル名 (.kif)</label>
             <input type="text" id="filename-input">
         </div>
-
         <div style="display:flex; gap:10px; margin-top:10px;">
-            <button onclick="closeSettings()" style="flex:1">閉じる</button>
-            <button id="save-final-btn" style="flex:1; background:#28a745; color:white; border:none; display:none;" onclick="executeDownload()">保存を実行</button>
+            <button onclick="closeSettings()" style="flex:1">Cancel</button>
+            <button id="save-final-btn" style="flex:1; background:#114422; color:#66ff99; border:none; display:none;" onclick="executeDownload()">Save KIF</button>
         </div>
     </div>
 </div>
@@ -135,21 +159,22 @@
 <div class="bottom-area">
     <div id="kifu-list"></div>
     <div class="controls">
-        <div style="grid-column: span 4; display: flex; gap: 2px;">
+        <div class="nav-group">
             <button onclick="jumpTo(0)" style="flex:1">|◀</button>
-            <button onclick="prevMove()" style="flex:1">◀</button>
-            <button onclick="nextMove()" style="flex:1">▶</button>
+            <button onclick="prevMove()" style="flex:1.2">◀ PREV</button>
+            <button onclick="nextMove()" style="flex:1.2">NEXT ▶</button>
             <button onclick="jumpTo(history.length - 1)" style="flex:1">▶|</button>
         </div>
         <button class="btn-undo" onclick="undoMove()">一手戻す</button>
-        <button onclick="toggleRotate()">画面反転</button>
+        <button onclick="toggleRotate()">反転</button>
         <button onclick="openSettings('info')">設定</button>
         <button class="btn-resign" onclick="resignGame()">投了</button>
-        <button class="btn-save" onclick="openSettings('save')" style="grid-column: span 4;">棋譜を保存する</button>
+        <button class="btn-save" onclick="openSettings('save')">棋譜を保存する</button>
     </div>
 </div>
 
 <script>
+    // --- 駒移動・定数 ---
     const P_MOVE = {
         '歩': { m: [[-1, 0]], up: 'と' }, '香': { m: [[-10, 0]], up: '杏' }, '桂': { m: [[-2, -1], [-2, 1]], up: '圭' },
         '銀': { m: [[-1, 0], [-1, -1], [-1, 1], [1, -1], [1, 1]], up: '全' }, '金': { m: [[-1, 0], [-1, -1], [-1, 1], [0, -1], [0, 1], [1, 0]], up: null },
@@ -200,6 +225,7 @@
         updateStatus();
     }
 
+    // --- ロジック（継承・○×含む） ---
     function openSettings(mode) {
         const overlay = document.getElementById('modal-overlay');
         const fnameArea = document.getElementById('filename-area');
@@ -212,13 +238,7 @@
             document.getElementById('modal-title').textContent = "棋譜を保存する";
             fnameArea.style.display = 'flex';
             saveBtn.style.display = 'block';
-            if (sn || gn) {
-                document.getElementById('filename-input').value = `${sn || "先手"}_${gn || "後手"}`;
-            } else {
-                const now = new Date();
-                const ts = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
-                document.getElementById('filename-input').value = `shogi_${ts}`;
-            }
+            document.getElementById('filename-input').value = (sn || gn) ? `${sn || "先手"}_${gn || "後手"}` : `shogi_${Date.now()}`;
         } else {
             document.getElementById('modal-title').textContent = "対局者の設定";
             fnameArea.style.display = 'none';
@@ -238,30 +258,13 @@
         document.getElementById('name-display-gote').textContent = gn || "後手";
     }
 
-    function executeDownload() {
-        const sn = document.getElementById('sente-input').value.trim() || "先手";
-        const gn = document.getElementById('gote-input').value.trim() || "後手";
-        const fn = document.getElementById('filename-input').value || "shogi_record";
-        let out = `V2.2\n棋戦：${document.getElementById('event').value || "無題"}\n開始日時：${document.getElementById('date-text').value}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n`;
-        out += history.slice(1).map(h => h.moveStr).join('\n') + '\n';
-        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fn}.kif`;
-        a.click();
-        closeSettings();
-    }
-
     function resignGame() {
         if (result || history.length < 2) return;
         if (!confirm("投了しますか？")) return;
         result = (turn === 'sente') ? 'gote_win' : 'sente_win';
         saveHistory(`${history.length} 投了`); 
-
-        // 名前そのものに記号を付与
-        const si = document.getElementById('sente-input');
-        const gi = document.getElementById('gote-input');
-        if (result === 'sente_win') { si.value += "○"; gi.value += "×"; } 
-        else { si.value += "×"; gi.value += "○"; }
-        
+        const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
+        if (result === 'sente_win') { si.value += "○"; gi.value += "×"; } else { si.value += "×"; gi.value += "○"; }
         syncDisplayNames(); render();
     }
 
@@ -270,50 +273,43 @@
         history.pop(); board = JSON.parse(JSON.stringify(history[history.length - 1].board));
         hands = JSON.parse(JSON.stringify(history[history.length - 1].hands));
         turn = history[history.length - 1].turn;
-        
-        // 勝ち負け判定を解除する場合、名前末尾の記号を消去
         if (result) {
-            const si = document.getElementById('sente-input');
-            const gi = document.getElementById('gote-input');
-            si.value = si.value.replace(/[○×]$/, '');
-            gi.value = gi.value.replace(/[○×]$/, '');
+            const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
+            si.value = si.value.replace(/[○×]$/, ''); gi.value = gi.value.replace(/[○×]$/, '');
             result = null;
         }
         currentIndex = history.length - 1;
         syncDisplayNames(); updateKifuList(); render();
     }
 
-    // --- 以下、基本ロジック（継承） ---
-    function toggleRotate() {
-        document.getElementById('board').classList.toggle('rotated');
-        document.getElementById('main-container').classList.toggle('rotated');
+    function executeDownload() {
+        const sn = document.getElementById('sente-input').value.trim() || "先手", gn = document.getElementById('gote-input').value.trim() || "後手", fn = document.getElementById('filename-input').value || "record";
+        let out = `V2.2\n棋戦：${document.getElementById('event').value || "無題"}\n開始日時：${document.getElementById('date-text').value}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n`;
+        out += history.slice(1).map(h => h.moveStr).join('\n') + '\n';
+        const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `${fn}.kif`;
+        a.click(); closeSettings();
     }
-    function saveHistory(moveStr) {
-        history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null, turn, moveStr });
-        currentIndex = history.length - 1; updateKifuList();
-    }
+
+    // --- その他基本操作（全機能継承） ---
+    function toggleRotate() { document.getElementById('board').classList.toggle('rotated'); document.getElementById('main-container').classList.toggle('rotated'); }
+    function saveHistory(moveStr) { history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null, turn, moveStr }); currentIndex = history.length - 1; updateKifuList(); }
     function updateHandUI(owner, handData) {
         const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
-        for (const [p, count] of Object.entries(handData)) {
-            if (count > 0) {
-                const el = document.createElement('div');
-                el.className = `hand-piece ${owner==='gote'?'p-gote':''} ${selected?.type==='hand' && selected.p===p && selected.owner===owner ? 'selected' : ''}`;
-                el.innerHTML = `${p}${count > 1 ? count : ''}`;
-                if (!result && currentIndex === history.length - 1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); };
-                container.appendChild(el);
-            }
+        for (const [p, count] of Object.entries(handData)) if (count > 0) {
+            const el = document.createElement('div'); el.className = `hand-piece ${owner==='gote'?'p-gote':''} ${selected?.type==='hand' && selected.p===p && selected.owner===owner ? 'selected' : ''}`;
+            el.innerHTML = `${p}${count > 1 ? count : ''}`; if (!result && currentIndex === history.length - 1) el.onclick = (e) => { e.stopPropagation(); selectHand(p, owner); };
+            container.appendChild(el);
         }
     }
     function selectHand(p, owner) { if (turn === owner) { selected = { type: 'hand', p, owner }; render(); } }
     function handleCellClick(r, c) {
         const clicked = board[r][c];
-        if (selected?.type === 'hand') {
-            if (!clicked) { if (checkIllegalDrop(selected.p, r, c)) return; executeMove(null, null, r, c, selected.p, true); }
-            selected = null;
-        } else if (selected) {
+        if (selected?.type === 'hand') { if (!clicked) { if (checkIllegalDrop(selected.p, r, c)) return; executeMove(null, null, r, c, selected.p, true); } selected = null; }
+        else if (selected) {
             if (selected.r === r && selected.c === c) selected = null;
             else if (canMove(board, selected.r, selected.c, r, c, turn)) {
-                if (wouldBeCheck(selected.r, selected.c, r, c, selected.p)) alert("自玉に王手がかかります");
+                if (wouldBeCheck(selected.r, selected.c, r, c, selected.p)) alert("王手放置");
                 else executeMove(selected.r, selected.c, r, c, selected.p);
                 selected = null;
             } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
@@ -324,53 +320,35 @@
     function canMove(b, fr, fc, tr, tc, owner) {
         const pData = b[fr][fc]; if (!pData) return false;
         const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
-        const moves = P_MOVE[pData.p].m; const mult = owner === 'sente' ? 1 : -1;
+        const moves = P_MOVE[pData.p].m, mult = owner === 'sente' ? 1 : -1;
         for (let [mr, mc] of moves) {
             const trgR = mr * mult, trgC = mc * mult;
             if (Math.abs(mr) < 10) { if (tr - fr === trgR && tc - fc === trgC) return true; }
             else {
                 const sR = Math.sign(trgR), sC = Math.sign(trgC);
-                for (let i = 1; i < 9; i++) {
-                    const cR = fr + sR * i, cC = fc + sC * i;
-                    if (cR === tr && cC === tc) return true;
-                    if (cR < 0 || cR > 8 || cC < 0 || cC > 8 || b[cR][cC]) break;
-                }
+                for (let i = 1; i < 9; i++) { const cR = fr + sR * i, cC = fc + sC * i; if (cR === tr && cC === tc) return true; if (cR < 0 || cR > 8 || cC < 0 || cC > 8 || b[cR][cC]) break; }
             }
         }
         return false;
     }
     function checkIllegalDrop(p, r, c) {
-        if (p === '歩') { for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) { alert("二歩です"); return true; } }
-        if ((p === '歩' || p === '香') && ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8))) { alert("行き所のない駒です"); return true; }
-        if (p === '桂' && ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7))) { alert("行き所のない駒です"); return true; }
-        if (wouldBeCheck(null, null, r, c, p, true)) { alert("王手放置です"); return true; }
-        return false;
+        if (p === '歩') for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) return (alert("二歩"), true);
+        if (((p === '歩' || p === '香') && ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8))) || (p === '桂' && ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7)))) return (alert("行き所なし"), true);
+        return (wouldBeCheck(null, null, r, c, p, true)) ? (alert("王手放置"), true) : false;
     }
     function wouldBeCheck(fr, fc, tr, tc, piece, isDrop = false) {
-        const nextBoard = JSON.parse(JSON.stringify(board));
-        if (!isDrop) nextBoard[fr][fc] = null;
-        nextBoard[tr][tc] = { p: piece, owner: turn };
-        return isKingUnderAttack(nextBoard, turn);
-    }
-    function isKingUnderAttack(targetBoard, owner) {
-        let kr, kc;
-        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (targetBoard[r][c]?.owner === owner && (targetBoard[r][c].p === '玉' || targetBoard[r][c].p === '王')) { kr = r; kc = c; }
-        if (kr === undefined) return false;
-        const opp = owner === 'sente' ? 'gote' : 'sente';
-        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (targetBoard[r][c]?.owner === opp && canMove(targetBoard, r, c, kr, kc, opp)) return true;
+        const nb = JSON.parse(JSON.stringify(board)); if (!isDrop) nb[fr][fc] = null; nb[tr][tc] = { p: piece, owner: turn };
+        let kr, kc; for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (nb[r][c]?.owner === turn && (nb[r][c].p === '玉' || nb[r][c].p === '王')) { kr = r; kc = c; }
+        if (kr === undefined) return false; const opp = turn === 'sente' ? 'gote' : 'sente';
+        for (let r = 0; r < 9; r++) for (let c = 0; c < 9; c++) if (nb[r][c]?.owner === opp && canMove(nb, r, c, kr, kc, opp)) return true;
         return false;
     }
     function executeMove(fr, fc, tr, tc, piece, isDrop = false) {
-        let finalPiece = piece; let suffix = "";
+        let finalPiece = piece, suffix = "";
         if (isDrop) { hands[turn][piece]--; suffix = "打"; }
         else {
-            if (board[tr][tc]) {
-                const cap = board[tr][tc].p; const rev = {'と':'歩','杏':'香','圭':'桂','全':'銀','馬':'角','龍':'飛'};
-                hands[turn][rev[cap] || cap]++;
-            }
-            if (P_MOVE[piece].up && ((turn === 'sente' && (fr <= 2 || tr <= 2)) || (turn === 'gote' && (fr >= 6 || tr >= 6)))) {
-                if (confirm("成りますか？")) { finalPiece = P_MOVE[piece].up; suffix = "成"; } else suffix = "不成";
-            }
+            if (board[tr][tc]) { const cap = board[tr][tc].p, rev = {'と':'歩','杏':'香','圭':'桂','全':'銀','馬':'角','龍':'飛'}; hands[turn][rev[cap] || cap]++; }
+            if (P_MOVE[piece].up && ((turn === 'sente' && (fr <= 2 || tr <= 2)) || (turn === 'gote' && (fr >= 6 || tr >= 6)))) { if (confirm("成りますか？")) { finalPiece = P_MOVE[piece].up; suffix = "成"; } else suffix = "不成"; }
             board[fr][fc] = null;
         }
         board[tr][tc] = { p: finalPiece, owner: turn };
@@ -383,21 +361,14 @@
     function nextMove() { if (currentIndex < history.length - 1) jumpTo(currentIndex + 1); }
     function updateKifuList() {
         const log = document.getElementById('kifu-list'); log.innerHTML = '';
-        history.forEach((h, i) => {
-            const d = document.createElement('div'); d.className = `kifu-line ${i === currentIndex ? 'active' : ''}`;
-            d.textContent = h.moveStr; d.onclick = () => jumpTo(i);
-            log.appendChild(d);
-        });
+        history.forEach((h, i) => { const d = document.createElement('div'); d.className = `kifu-line ${i === currentIndex ? 'active' : ''}`; d.textContent = h.moveStr; d.onclick = () => jumpTo(i); log.appendChild(d); });
         log.scrollTop = log.scrollHeight;
     }
     function updateStatus() {
         const msg = document.getElementById('msg'); 
-        const sn = document.getElementById('name-display-sente').textContent;
-        const gn = document.getElementById('name-display-gote').textContent;
-        if (result) { msg.textContent = `${result === 'sente_win' ? sn : gn}の勝ち`; return; }
-        msg.textContent = `${history[currentIndex].turn === 'sente' ? '先手' : '後手'}番`;
-        if (isKingUnderAttack(history[currentIndex].board, history[currentIndex].turn)) msg.textContent += "【王手】";
-        if (currentIndex < history.length - 1) msg.textContent = "閲覧中";
+        if (result) { msg.textContent = `${result === 'sente_win' ? document.getElementById('name-display-sente').textContent : document.getElementById('name-display-gote').textContent} 勝`; return; }
+        msg.textContent = `${history[currentIndex].turn === 'sente' ? '先手' : '後手'}番` + (wouldBeCheck(null,0,0,0,"",true)?"【王手】":"");
+        if (currentIndex < history.length - 1) msg.textContent = "閲覧モード";
     }
     init();
 </script>
