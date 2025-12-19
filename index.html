@@ -3,55 +3,49 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - One Screen Edition</title>
+    <title>HTML将棋 Ultra - Pro Edition</title>
     <style>
         :root {
             --bg-color: #fdf5e6;
             --board-bg: #e3b062;
-            /* 画面の高さに基づき、はみ出さないセルサイズを計算 */
-            --cell-size: min(10vw, 6vh, 50px);
+            --cell-size: min(10.5vw, 6.5vh, 55px);
         }
         * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
         body {
             font-family: 'Hiragino Mincho ProN', serif;
             display: flex; flex-direction: column;
             height: 100dvh; margin: 0; background: var(--bg-color);
-            overflow: hidden; /* スクロール禁止 */
-            padding: 5px;
+            overflow: hidden; padding: 5px;
         }
 
-        /* 上部情報エリア：コンパクト化 */
-        .info-area {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
-            width: 100%; max-width: 600px; margin-bottom: 5px;
-        }
-        .info-area input {
-            padding: 4px; border: 1px solid #ccc; border-radius: 4px;
-            font-size: 11px; width: 100%;
-        }
-
-        /* メインコンテナ：縦に詰め込む */
+        /* ゲームコンテナ：回転時に要素順を入れ替える */
         .game-container {
             flex: 1; display: flex; flex-direction: column;
-            align-items: center; justify-content: center; gap: 5px;
-            min-height: 0; /* 子要素の縮小を許可 */
+            align-items: center; justify-content: center; gap: 4px;
+            min-height: 0; transition: transform 0.6s;
         }
+        .game-container.rotated { flex-direction: column-reverse; }
 
         .komadai {
-            width: 95%; max-width: 500px; height: 45px;
+            width: 98%; max-width: 500px; height: 45px;
             background: #d2a45d; border: 1px solid #333;
             display: flex; align-items: center; padding: 0 10px;
             border-radius: 4px; box-shadow: 1px 1px 4px rgba(0,0,0,0.1);
         }
         .komadai h4 { margin: 0 10px 0 0; font-size: 12px; white-space: nowrap; }
-        .hand-container { display: flex; gap: 4px; overflow-x: auto; flex: 1; }
-        .hand-piece { font-size: 18px; cursor: pointer; border: 1px solid transparent; }
+        .hand-container { display: flex; gap: 5px; flex: 1; }
+        .hand-piece { font-size: 20px; cursor: pointer; transition: transform 0.3s; }
         .hand-piece.selected { background: yellow; border-radius: 3px; }
 
-        .board-wrapper { position: relative; }
+        /* 回転時の駒の向き制御 */
+        .p-gote { transform: rotate(180deg); }
+        .game-container.rotated .cell:not(.p-gote) { transform: rotate(180deg); }
+        .game-container.rotated .cell.p-gote { transform: rotate(0deg); }
+        .game-container.rotated .komadai .hand-piece { transform: rotate(180deg); }
+
         .board {
             display: grid; grid-template-columns: repeat(9, var(--cell-size));
-            background: var(--board-bg); border: 2px solid #333;
+            background: var(--board-bg); border: 2.5px solid #333;
             transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
         }
         .board.rotated { transform: rotate(180deg); }
@@ -63,48 +57,55 @@
         }
         .cell.selected { background: rgba(255, 255, 0, 0.5); }
         .cell.last-move { background: rgba(255, 100, 0, 0.2); }
-        .p-gote { transform: rotate(180deg); }
-        .board.rotated .cell:not(.p-gote) { transform: rotate(180deg); }
-        .board.rotated .p-gote { transform: rotate(0deg); }
 
-        .status-msg { height: 20px; color: red; font-weight: bold; font-size: 14px; text-align: center; }
+        .status-msg { height: 22px; color: red; font-weight: bold; font-size: 15px; text-align: center; }
 
-        /* 下部エリア：棋譜と操作 */
-        .bottom-area {
-            width: 100%; max-width: 500px; display: flex; flex-direction: column;
-            gap: 5px; margin-top: 5px;
-        }
+        .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 4px; }
         #kifu-list {
-            height: 60px; overflow-y: auto; background: white;
+            height: 55px; overflow-y: auto; background: white;
             border: 1px solid #ccc; font-size: 12px; padding: 4px;
-            display: flex; flex-wrap: wrap; gap: 5px; align-content: flex-start;
+            display: flex; flex-wrap: wrap; gap: 4px;
         }
-        .kifu-line { cursor: pointer; padding: 2px 4px; border: 1px solid #eee; border-radius: 3px; }
-        .kifu-line.active { background: #e7f3ff; border-color: #2196f3; }
+        .kifu-line { cursor: pointer; padding: 2px 5px; border: 1px solid #ddd; border-radius: 3px; }
+        .kifu-line.active { background: #e7f3ff; border-color: #2196f3; font-weight: bold; }
 
-        .controls {
-            display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
-        }
+        .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
         .playback-row { grid-column: span 4; display: flex; gap: 2px; }
         button {
-            padding: 8px 2px; cursor: pointer; background: #fff;
-            border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 11px;
+            padding: 10px 2px; cursor: pointer; background: #fff;
+            border: 1px solid #999; border-radius: 4px; font-weight: bold; font-size: 12px;
         }
         .btn-undo { background: #fff3cd; }
         .btn-resign { background: #f8d7da; }
         .btn-save { background: #28a745; color: white; border: none; }
+        .btn-settings { background: #6c757d; color: white; border: none; }
+
+        /* 設定モーダル */
+        #modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); z-index: 100; align-items: center; justify-content: center;
+        }
+        .modal-content {
+            background: white; padding: 20px; border-radius: 8px; width: 85%; max-width: 400px;
+            display: flex; flex-direction: column; gap: 10px;
+        }
+        .modal-content input { padding: 10px; font-size: 16px; border: 1px solid #ccc; border-radius: 4px; }
     </style>
 </head>
 <body>
 
-<div class="info-area">
-    <input type="text" id="event" placeholder="棋戦">
-    <input type="date" id="date">
-    <input type="text" id="sente" placeholder="先手">
-    <input type="text" id="gote" placeholder="後手">
+<div id="modal-overlay" onclick="closeSettings()">
+    <div class="modal-content" onclick="event.stopPropagation()">
+        <h3>対局設定</h3>
+        <input type="text" id="event" placeholder="棋戦名">
+        <input type="date" id="date">
+        <input type="text" id="sente" placeholder="先手 氏名">
+        <input type="text" id="gote" placeholder="後手 氏名">
+        <button onclick="closeSettings()" style="background:#2196f3; color:white; border:none; padding:12px;">設定を閉じる</button>
+    </div>
 </div>
 
-<div class="game-container">
+<div class="game-container" id="main-container">
     <div class="komadai" id="hand-gote"><h4>後</h4><div class="hand-container"></div></div>
     
     <div class="board-wrapper">
@@ -126,8 +127,10 @@
         </div>
         <button class="btn-undo" onclick="undoMove()">一手戻す</button>
         <button onclick="toggleRotate()">回転</button>
+        <button class="btn-settings" onclick="openSettings()">設定</button>
         <button class="btn-resign" onclick="resignGame()">投了</button>
-        <button class="btn-save" onclick="downloadKIF()">保存</button>
+        <button class="btn-save" onclick="downloadKIF()" style="grid-column: span 2;">KIF保存</button>
+        <button onclick="location.reload()" style="grid-column: span 2;">リセット</button>
     </div>
 </div>
 
@@ -164,13 +167,7 @@
     }
 
     function saveHistory(moveStr) {
-        history.push({
-            board: JSON.parse(JSON.stringify(board)),
-            hands: JSON.parse(JSON.stringify(hands)),
-            lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null,
-            turn: turn,
-            moveStr: moveStr
-        });
+        history.push({ board: JSON.parse(JSON.stringify(board)), hands: JSON.parse(JSON.stringify(hands)), lastPos: history.length > 0 ? (history[history.length-1].lastPos) : null, turn, moveStr });
         currentIndex = history.length - 1;
         updateKifuList();
     }
@@ -178,14 +175,14 @@
     function render() {
         const state = history[currentIndex];
         const boardEl = document.getElementById('board'); boardEl.innerHTML = '';
-        const currentBoard = state.board;
+        const curBoard = state.board;
         const lastP = (currentIndex > 0) ? state.lastPos : null;
 
         for (let r = 0; r < 9; r++) {
             for (let c = 0; c < 9; c++) {
                 const cell = document.createElement('div');
                 cell.className = `cell ${selected?.r===r && selected?.c===c ? 'selected' : ''} ${lastP?.r===r && lastP?.c===c ? 'last-move' : ''}`;
-                const d = currentBoard[r][c];
+                const d = curBoard[r][c];
                 if (d) { cell.textContent = d.p; if (d.owner === 'gote') cell.classList.add('p-gote'); }
                 if (!result && currentIndex === history.length - 1) cell.onclick = () => handleCellClick(r, c);
                 boardEl.appendChild(cell);
@@ -196,8 +193,7 @@
     }
 
     function updateHandUI(owner, handData) {
-        const container = document.querySelector(`#hand-${owner} .hand-container`);
-        container.innerHTML = '';
+        const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
         for (const [p, count] of Object.entries(handData)) {
             if (count > 0) {
                 const el = document.createElement('div');
@@ -214,15 +210,12 @@
     function handleCellClick(r, c) {
         const clicked = board[r][c];
         if (selected?.type === 'hand') {
-            if (!clicked) {
-                if (checkIllegalDrop(selected.p, r, c)) return;
-                executeMove(null, null, r, c, selected.p, true);
-            }
+            if (!clicked) { if (checkIllegalDrop(selected.p, r, c)) return; executeMove(null, null, r, c, selected.p, true); }
             selected = null;
         } else if (selected) {
             if (selected.r === r && selected.c === c) selected = null;
             else if (canMove(board, selected.r, selected.c, r, c, turn)) {
-                if (wouldBeCheck(selected.r, selected.c, r, c, selected.p)) alert("自分の玉が取られてしまいます");
+                if (wouldBeCheck(selected.r, selected.c, r, c, selected.p)) alert("自玉に王手がかかります");
                 else executeMove(selected.r, selected.c, r, c, selected.p);
                 selected = null;
             } else if (clicked && clicked.owner === turn) selected = { r, c, p: clicked.p, type: 'board' };
@@ -238,9 +231,8 @@
         const mult = owner === 'sente' ? 1 : -1;
         for (let [mr, mc] of moves) {
             const trgR = mr * mult, trgC = mc * mult;
-            if (Math.abs(mr) < 10 && Math.abs(mc) < 10) {
-                if (tr - fr === trgR && tc - fc === trgC) return true;
-            } else {
+            if (Math.abs(mr) < 10) { if (tr - fr === trgR && tc - fc === trgC) return true; }
+            else {
                 const sR = Math.sign(trgR), sC = Math.sign(trgC);
                 for (let i = 1; i < 9; i++) {
                     const cR = fr + sR * i, cC = fc + sC * i;
@@ -253,9 +245,9 @@
     }
 
     function checkIllegalDrop(p, r, c) {
-        if (p === '歩') for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) { alert("二歩です"); return true; }
-        if (p === '歩' || p === '香') if ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8)) { alert("行き所のない駒です"); return true; }
-        if (p === '桂') if ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7)) { alert("行き所のない駒です"); return true; }
+        if (p === '歩') { for (let i = 0; i < 9; i++) if (board[i][c]?.p === '歩' && board[i][c]?.owner === turn) { alert("二歩です"); return true; } }
+        if ((p === '歩' || p === '香') && ((turn === 'sente' && r === 0) || (turn === 'gote' && r === 8))) { alert("行き所のない駒です"); return true; }
+        if (p === '桂' && ((turn === 'sente' && r <= 1) || (turn === 'gote' && r >= 7))) { alert("行き所のない駒です"); return true; }
         if (wouldBeCheck(null, null, r, c, p, true)) { alert("王手放置です"); return true; }
         return false;
     }
@@ -281,7 +273,7 @@
         if (isDrop) { hands[turn][piece]--; suffix = "打"; }
         else {
             if (board[tr][tc]) {
-                let cap = board[tr][tc].p;
+                const cap = board[tr][tc].p;
                 const rev = {'と':'歩','杏':'香','圭':'桂','全':'銀','馬':'角','龍':'飛'};
                 hands[turn][rev[cap] || cap]++;
             }
@@ -312,14 +304,17 @@
         const prevState = history[history.length - 1];
         board = JSON.parse(JSON.stringify(prevState.board));
         hands = JSON.parse(JSON.stringify(prevState.hands));
-        turn = prevState.turn;
-        result = null; 
-        currentIndex = history.length - 1;
-        updateKifuList();
-        render();
+        turn = prevState.turn; result = null; currentIndex = history.length - 1;
+        updateKifuList(); render();
     }
 
-    function toggleRotate() { document.getElementById('board').classList.toggle('rotated'); }
+    function toggleRotate() {
+        document.getElementById('board').classList.toggle('rotated');
+        document.getElementById('main-container').classList.toggle('rotated');
+    }
+
+    function openSettings() { document.getElementById('modal-overlay').style.display = 'flex'; }
+    function closeSettings() { document.getElementById('modal-overlay').style.display = 'none'; }
     function jumpTo(idx) { currentIndex = idx; render(); }
     function prevMove() { if (currentIndex > 0) jumpTo(currentIndex - 1); }
     function nextMove() { if (currentIndex < history.length - 1) jumpTo(currentIndex + 1); }
@@ -352,7 +347,7 @@
         let out = `V2.2\n棋戦：${document.getElementById('event').value || "無題"}\n開始日時：${document.getElementById('date').value.replace(/-/g,'/')}\n先手：${sn}\n後手：${gn}\n手数----指手---------\n`;
         out += history.slice(1).map(h => h.moveStr).join('\n') + '\n';
         const blob = new Blob([new Uint8Array([0xEF, 0xBB, 0xBF]), out], { type: 'text/plain;charset=utf-8' });
-        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shogi.kif"; a.click();
+        const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = "shogi_play.kif"; a.click();
     }
 
     init();
