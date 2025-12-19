@@ -160,18 +160,18 @@
         reader.readAsText(file, "Shift_JIS");
     }
 
-    /* --- 保存機能：Kifu for iOS 公式形式に完全準拠 --- */
+    /* --- 保存機能：Kifu for iOS 公式形式に完全に準拠 --- */
     function executeDownload() {
         const sente = document.getElementById('sente-input').value || "先手";
         const gote = document.getElementById('gote-input').value || "後手";
         const event = document.getElementById('event').value || "対局";
         const date = document.getElementById('date-text').value;
 
-        // 公式ファイルと同じ改行コード (LF) を使用
-        const NL = "\n";
+        // 改行コードを CRLF (\r\n) に設定
+        const NL = "\r\n";
         
-        // ヘッダー：公式ファイル (V4.73) の構成を再現
-        let out = `#KIF version=2.0 encoding=UTF-8${NL}`;
+        // ヘッダー：0000-羽生善治○瀬戸博晴×.kif と同じ内容を再現
+        let out = `#KIF version=2.0 encoding=UTF-8${NL}`; 
         out += `# ---- Kifu for iPhone V4.73 棋譜ファイル ----${NL}`; 
         out += `開始日時：${date}${NL}`;
         out += `終了日時：${date}${NL}`;
@@ -183,30 +183,36 @@
         out += `手数----指手---------消費時間--${NL}`;
 
         history.slice(1).forEach((h, i) => {
-            // 手数：4文字幅で右詰め
+            // 手数：4文字幅
             const num = (i + 1).toString().padStart(4, ' ');
             
-            // 指し手と時間の余白：公式の通りカッコの開始位置を揃える
-            // 7文字(標準的な指し手) + 3スペース = 10文字目付近から開始するように調整
+            // 指し手とカッコの距離を公式（V4.73）と一致させる
+            // 指し手文字列（h.moveStr）を10文字分として扱い、その後ろにカッコを配置
             const move = h.moveStr.padEnd(10, ' ');
-            out += `${num} ${move}   ( 0:00/00:)${NL}`;
+            out += `${num} ${move}( 0:00/00:)${NL}`;
         });
 
-        // 投了時の結果出力
+        // 投了時の処理
         if (result) {
             const lastNum = history.length.toString().padStart(4, ' ');
             out += `${lastNum} 投了            ( 0:00/00:)${NL}`;
         }
 
-        // UTF-8(BOM付き)で作成 (ブラウザからのダウンロードで文字化けを防ぐため)
+        // BOM付きUTF-8でBlobを作成（ブラウザ環境での文字化け回避とiOSアプリでの認識のため）
         const bom = new Uint8Array([0xEF, 0xBB, 0xBF]);
         const blob = new Blob([bom, out], { type: 'text/plain;charset=utf-8' });
         
+        // ダウンロード実行
+        const url = URL.createObjectURL(blob);
         const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
+        a.href = url;
         const safeName = (document.getElementById('filename-input').value || "shogi").replace(/[\\/:*?"<>|]/g, "");
         a.download = `${safeName}.kif`;
+        document.body.appendChild(a);
         a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        
         closeSettings();
     }
 
