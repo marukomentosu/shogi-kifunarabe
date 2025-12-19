@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Final Complete</title>
+    <title>HTML将棋 Ultra - Kifu Import</title>
     <style>
         :root {
             --bg-deep: #121212; --bg-panel: #1e1e1e; --board-dark: #3a2a1d;
@@ -80,10 +80,13 @@
 </div>
 
 <div class="bottom-area">
+    <input type="file" id="kifu-import-input" style="display:none" accept=".kif" onchange="importKifu(event)">
     <div class="controls">
         <div class="nav-group"><button onclick="jumpTo(0)">|◀</button><button onclick="prevMove()" style="flex:1.5">◀ 前へ</button><button onclick="nextMove()" style="flex:1.5">次へ ▶</button><button onclick="jumpTo(history.length - 1)">▶|</button></div>
         <button style="color:var(--text-accent)" onclick="undoMove()">一手戻す</button><button onclick="toggleRotate()">盤反転</button><button onclick="toggleKifu(true)">棋譜</button><button style="color:#99ccff" onclick="resetGame()">最初から</button>
-        <button style="grid-column: span 2;" onclick="openSettings('info')">対局設定</button><button style="grid-column: span 2; color:#ff6666" onclick="resignGame()">投了</button>
+        <button onclick="openSettings('info')">設定</button>
+        <button onclick="document.getElementById('kifu-import-input').click()">棋譜取込</button>
+        <button style="grid-column: span 2; color:#ff6666" onclick="resignGame()">投了</button>
         <button style="grid-column: span 4; background:#114422; color:#66ff99;" onclick="openSettings('save')">棋譜を保存する (.kif)</button>
     </div>
 </div>
@@ -116,7 +119,6 @@
         saveHistory("開始"); render();
     }
 
-    // 移動ロジック
     function canMove(b, fr, fc, tr, tc, owner) {
         const pData = b[fr][fc]; if (!pData) return false;
         const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
@@ -185,46 +187,89 @@
         render();
     }
 
-    function executeMove(fr, fc, tr, tc, piece, isDrop = false) {
+    function executeMove(fr, fc, tr, tc, piece, isDrop = false, skipPromoteConfirm = false) {
         let finalPiece = piece, suffix = "";
         if (isDrop) { hands[turn][piece]--; suffix = "打"; }
         else {
             if (board[tr][tc]) { const cap = board[tr][tc].p, rev = {'と':'歩','杏':'香','圭':'桂','全':'銀','馬':'角','龍':'飛'}; hands[turn][rev[cap] || cap]++; }
-            if (P_MOVE[piece].up && ((turn === 'sente' && (fr <= 2 || tr <= 2)) || (turn === 'gote' && (fr >= 6 || tr >= 6)))) { if (confirm("成りますか？")) { finalPiece = P_MOVE[piece].up; suffix = "成"; } else suffix = "不成"; }
+            if (P_MOVE[piece].up && ((turn === 'sente' && (fr <= 2 || tr <= 2)) || (turn === 'gote' && (fr >= 6 || tr >= 6)))) { 
+                if (skipPromoteConfirm || confirm("成りますか？")) { finalPiece = P_MOVE[piece].up; suffix = "成"; } else suffix = "不成"; 
+            }
             board[fr][fc] = null;
         }
         board[tr][tc] = { p: finalPiece, owner: turn };
         const moveStr = `${history.length} ${"９８７６５４３２１"[tc]}${"一二三四五六七八九"[tr]}${finalPiece}${suffix}`;
-        history[currentIndex].lastPos = {r: tr, c: tc}; turn = (turn === 'sente' ? 'gote' : 'sente');
+        history[currentIndex].lastPos = {r: tr, c: tc}; 
+        turn = (turn === 'sente' ? 'gote' : 'sente');
         saveHistory(moveStr); render();
     }
 
-    // --- 勝敗マーク復元セクション ---
+    // --- インポート機能 ---
+    async function importKifu(e) {
+        const file = e.target.files[0]; if (!file) return;
+        const text = await file.text();
+        const lines = text.split('\n');
+        init(); // 盤面リセット
+        
+        const moveLines = [];
+        lines.forEach(line => {
+            if (line.includes('先手：')) document.getElementById('sente-input').value = line.split('：')[1].trim();
+            if (line.includes('後手：')) document.getElementById('gote-input').value = line.split('：')[1].trim();
+            if (line.includes('棋戦：')) document.getElementById('event').value = line.split('：')[1].trim();
+            if (/^\s*\d+/.test(line)) moveLines.push(line.trim());
+        });
+
+        syncDisplayNames();
+
+        for (const line of moveLines) {
+            const m = line.match(/(\d+)\s+([１-９])([一二三四五六七八九])(.+)/);
+            if (!m) { if (line.includes('投了')) resignGame(); continue; }
+            
+            const tr = "一二三四五六七八九".indexOf(m[3]);
+            const tc = "９８７６５４３２１".indexOf(m[2]);
+            const action = m[4];
+            const pieceChar = action[0];
+            const isDrop = action.includes('打');
+            const isPromote = action.includes('成') && !action.includes('不成');
+
+            if (isDrop) { executeMove(null, null, tr, tc, pieceChar, true); }
+            else {
+                // 移動元の駒を探索（簡易実装：動ける駒を探す）
+                let found = false;
+                for (let r=0; r<9; r++) for (let c=0; c<9; c++) {
+                    if (board[r][c]?.owner === turn && canMove(board, r, c, tr, tc, turn)) {
+                        // 駒の種類が一致するか確認（成駒対応含む）
+                        if (board[r][c].p === pieceChar || P_MOVE[board[r][c].p].up === pieceChar) {
+                            executeMove(r, c, tr, tc, board[r][c].p, false, true);
+                            found = true; break;
+                        }
+                    }
+                    if (found) break;
+                }
+            }
+        }
+        render();
+        alert("棋譜を読み込みました。");
+    }
+
     function resignGame() {
         if (result || !confirm("投了しますか？")) return;
         result = (turn === 'sente' ? 'gote_win' : 'sente_win');
         saveHistory(`${history.length} 投了`);
-        
-        // 勝敗マーカーの付与
         const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
         if (result === 'sente_win') { si.value += "○"; gi.value += "×"; }
         else { si.value += "×"; gi.value += "○"; }
-        
         syncDisplayNames(); render();
     }
 
     function resetGame() {
-        if (confirm("最初からやり直しますか？（勝敗マークは消去されます）")) {
-            // 勝敗マーカーの消去
+        if (confirm("最初からやり直しますか？")) {
             const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
-            si.value = si.value.replace(/[○×]$/, '');
-            gi.value = gi.value.replace(/[○×]$/, '');
-            syncDisplayNames();
-            init();
+            si.value = si.value.replace(/[○×]$/, ''); gi.value = gi.value.replace(/[○×]$/, '');
+            syncDisplayNames(); init();
         }
     }
 
-    // --- その他UI機能 ---
     function updateHandUI(owner, handData) {
         const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
         for (const [p, count] of Object.entries(handData)) if (count > 0) {
