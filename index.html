@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>HTML将棋 Ultra - Kifu Import</title>
+    <title>HTML将棋 Ultra - High Precision</title>
     <style>
         :root {
             --bg-deep: #121212; --bg-panel: #1e1e1e; --board-dark: #3a2a1d;
@@ -48,7 +48,8 @@
         .bottom-area { width: 100%; max-width: 500px; display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
         .controls { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; }
         .nav-group { grid-column: span 4; display: flex; gap: 4px; }
-        button { padding: 10px 2px; cursor: pointer; background: var(--btn-bg); border: 1px solid var(--btn-border); border-radius: 6px; color: var(--text-main); font-weight: bold; font-size: 12px; }
+        button { padding: 10px 2px; cursor: pointer; background: var(--btn-bg); border: 1px solid var(--btn-border); border-radius: 6px; color: var(--text-main); font-weight: bold; font-size: 11px; }
+        
         #modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); z-index: 300; align-items: center; justify-content: center; }
         .modal-content { background: var(--bg-panel); padding: 15px; border-radius: 12px; width: 90%; max-width: 380px; display: flex; flex-direction: column; gap: 10px; }
         .modal-content input { background: #000; border: 1px solid var(--btn-border); padding: 12px; color: var(--text-main); border-radius: 6px; width: 100%; }
@@ -84,10 +85,10 @@
     <div class="controls">
         <div class="nav-group"><button onclick="jumpTo(0)">|◀</button><button onclick="prevMove()" style="flex:1.5">◀ 前へ</button><button onclick="nextMove()" style="flex:1.5">次へ ▶</button><button onclick="jumpTo(history.length - 1)">▶|</button></div>
         <button style="color:var(--text-accent)" onclick="undoMove()">一手戻す</button><button onclick="toggleRotate()">盤反転</button><button onclick="toggleKifu(true)">棋譜</button><button style="color:#99ccff" onclick="resetGame()">最初から</button>
-        <button onclick="openSettings('info')">設定</button>
-        <button onclick="document.getElementById('kifu-import-input').click()">棋譜取込</button>
+        <button style="grid-column: span 2;" onclick="openSettings('info')">対局設定</button>
+        <button style="grid-column: span 2;" onclick="document.getElementById('kifu-import-input').click()">棋譜を読み込む</button>
         <button style="grid-column: span 2; color:#ff6666" onclick="resignGame()">投了</button>
-        <button style="grid-column: span 4; background:#114422; color:#66ff99;" onclick="openSettings('save')">棋譜を保存する (.kif)</button>
+        <button style="grid-column: span 2; background:#114422; color:#66ff99;" onclick="openSettings('save')">棋譜を保存 (.kif)</button>
     </div>
 </div>
 
@@ -119,6 +120,7 @@
         saveHistory("開始"); render();
     }
 
+    // 移動ロジック
     function canMove(b, fr, fc, tr, tc, owner) {
         const pData = b[fr][fc]; if (!pData) return false;
         const dest = b[tr][tc]; if (dest && dest.owner === owner) return false;
@@ -204,72 +206,100 @@
         saveHistory(moveStr); render();
     }
 
-    // --- インポート機能 ---
-    async function importKifu(e) {
+    // --- 棋譜読み込み強化ロジック ---
+    function importKifu(e) {
         const file = e.target.files[0]; if (!file) return;
-        const text = await file.text();
-        const lines = text.split('\n');
-        init(); // 盤面リセット
-        
-        const moveLines = [];
-        lines.forEach(line => {
-            if (line.includes('先手：')) document.getElementById('sente-input').value = line.split('：')[1].trim();
-            if (line.includes('後手：')) document.getElementById('gote-input').value = line.split('：')[1].trim();
-            if (line.includes('棋戦：')) document.getElementById('event').value = line.split('：')[1].trim();
-            if (/^\s*\d+/.test(line)) moveLines.push(line.trim());
-        });
+        const reader = new FileReader();
+        reader.onload = function(event) {
+            const text = event.target.result;
+            const lines = text.split('\n');
+            init(); // 完全に初期化
 
-        syncDisplayNames();
+            const moveLines = [];
+            lines.forEach(line => {
+                const l = line.trim();
+                if (l.startsWith('先手：')) document.getElementById('sente-input').value = l.split('：')[1];
+                if (l.startsWith('後手：')) document.getElementById('gote-input').value = l.split('：')[1];
+                if (l.startsWith('棋戦：')) document.getElementById('event').value = l.split('：')[1];
+                if (/^\d+\s+/.test(l)) moveLines.push(l);
+            });
 
-        for (const line of moveLines) {
-            const m = line.match(/(\d+)\s+([１-９])([一二三四五六七八九])(.+)/);
-            if (!m) { if (line.includes('投了')) resignGame(); continue; }
-            
-            const tr = "一二三四五六七八九".indexOf(m[3]);
-            const tc = "９８７６５４３２１".indexOf(m[2]);
-            const action = m[4];
-            const pieceChar = action[0];
-            const isDrop = action.includes('打');
-            const isPromote = action.includes('成') && !action.includes('不成');
+            syncDisplayNames();
 
-            if (isDrop) { executeMove(null, null, tr, tc, pieceChar, true); }
-            else {
-                // 移動元の駒を探索（簡易実装：動ける駒を探す）
-                let found = false;
-                for (let r=0; r<9; r++) for (let c=0; c<9; c++) {
-                    if (board[r][c]?.owner === turn && canMove(board, r, c, tr, tc, turn)) {
-                        // 駒の種類が一致するか確認（成駒対応含む）
-                        if (board[r][c].p === pieceChar || P_MOVE[board[r][c].p].up === pieceChar) {
-                            executeMove(r, c, tr, tc, board[r][c].p, false, true);
-                            found = true; break;
+            // 指し手の実行
+            for (let line of moveLines) {
+                // 正規表現で座標と駒を抽出（全角数字と漢字に対応）
+                const match = line.match(/^\d+\s+([１-９同][一二三四五六七八九　]+)(.+)$/);
+                if (!match) { if (line.includes('投了')) applyResignResult(); continue; }
+
+                let tr, tc;
+                const posStr = match[1];
+                const action = match[2];
+
+                if (posStr.includes('同')) {
+                    const last = history[history.length-1].lastPos;
+                    tr = last.r; tc = last.c;
+                } else {
+                    tc = "９８７６５４３２１".indexOf(posStr[0]);
+                    tr = "一二三四五六七八九".indexOf(posStr[1]);
+                }
+
+                const pieceChar = action[0];
+                const isDrop = action.includes('打');
+                
+                if (isDrop) {
+                    executeMove(null, null, tr, tc, pieceChar, true, true);
+                } else {
+                    let found = false;
+                    for (let r=0; r<9; r++) {
+                        for (let c=0; c<9; c++) {
+                            const p = board[r][c];
+                            if (p && p.owner === turn) {
+                                // 成駒の場合も考慮して移動元を特定
+                                if (canMove(board, r, c, tr, tc, turn)) {
+                                    if (p.p === pieceChar || P_MOVE[p.p].up === pieceChar) {
+                                        executeMove(r, c, tr, tc, p.p, false, true);
+                                        found = true; break;
+                                    }
+                                }
+                            }
                         }
+                        if (found) break;
                     }
-                    if (found) break;
                 }
             }
-        }
-        render();
-        alert("棋譜を読み込みました。");
+            render();
+            alert("棋譜の読み込みが完了しました。");
+        };
+        reader.readAsText(file);
     }
 
-    function resignGame() {
-        if (result || !confirm("投了しますか？")) return;
+    function applyResignResult() {
         result = (turn === 'sente' ? 'gote_win' : 'sente_win');
         saveHistory(`${history.length} 投了`);
         const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
         if (result === 'sente_win') { si.value += "○"; gi.value += "×"; }
         else { si.value += "×"; gi.value += "○"; }
-        syncDisplayNames(); render();
+        syncDisplayNames();
+    }
+
+    function resignGame() {
+        if (result || !confirm("投了しますか？")) return;
+        applyResignResult();
+        render();
     }
 
     function resetGame() {
         if (confirm("最初からやり直しますか？")) {
             const si = document.getElementById('sente-input'), gi = document.getElementById('gote-input');
-            si.value = si.value.replace(/[○×]$/, ''); gi.value = gi.value.replace(/[○×]$/, '');
-            syncDisplayNames(); init();
+            si.value = si.value.replace(/[○×]$/, '');
+            gi.value = gi.value.replace(/[○×]$/, '');
+            syncDisplayNames();
+            init();
         }
     }
 
+    // UIパーツ
     function updateHandUI(owner, handData) {
         const container = document.querySelector(`#hand-${owner} .hand-container`); container.innerHTML = '';
         for (const [p, count] of Object.entries(handData)) if (count > 0) {
