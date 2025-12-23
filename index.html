@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>将棋盤（KIF読込強化・勝敗判定・回転）</title>
+    <title>Web将棋</title>
     <style>
         :root {
             --board-bg: #f3c77c;
@@ -19,74 +19,85 @@
         body {
             font-family: "Yu Mincho", "Hiragino Mincho ProN", serif;
             background-color: var(--bg-color);
-            margin: 0; padding: 5px; height: 100dvh;
+            margin: 0; padding: 10px;
+            /* スマホで見切れさせないため、高さを固定せずスクロールさせる */
+            min-height: 100vh;
             display: flex; flex-direction: column; align-items: center;
-            overflow: hidden;
         }
-        @media (max-height: 500px) { body { overflow-y: auto; height: auto; display: block; } }
 
+        /* --- ヘッダー（対局情報） --- */
         .meta-info {
-            display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 4px;
-            width: 100%; max-width: 900px; margin-bottom: 5px; flex-shrink: 0;
+            display: grid; grid-template-columns: 1.5fr 2fr 1fr 1fr; gap: 5px;
+            width: 100%; max-width: 800px; margin-bottom: 10px;
         }
-        .meta-input { padding: 4px; border: 1px solid #ccc; border-radius: 4px; width: 100%; font-size: 0.8rem; }
+        .meta-input { 
+            padding: 6px; border: 1px solid #ccc; border-radius: 4px; width: 100%; font-size: 0.9rem; 
+        }
+        /* 日付入力エリア */
+        .date-wrapper { display: flex; gap: 2px; }
+        .date-btn { 
+            padding: 0 8px; background: #eee; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; font-size: 1.2rem;
+        }
 
+        /* --- メインレイアウト --- */
         .main-container {
-            display: flex; flex-direction: row; gap: 10px;
-            width: 100%; max-width: 1000px; flex: 1; min-height: 0; justify-content: center;
+            display: flex; flex-direction: row; gap: 20px;
+            width: 100%; max-width: 1000px; justify-content: center; align-items: flex-start;
         }
 
+        /* ゲームエリア */
         .game-area {
-            display: flex; flex-direction: column; align-items: center; justify-content: center;
-            height: 100%; width: 100%; position: relative;
+            display: flex; flex-direction: column; align-items: center;
+            width: auto;
         }
 
+        /* 駒台 */
         .hand {
-            display: flex; gap: 2px; padding: 4px 8px; background: #eecfa1; border: 1px solid #8d6e63;
-            width: 100%; max-width: calc(85vh * 0.9); flex-wrap: wrap; align-items: center; justify-content: center;
-            border-radius: 2px; margin: 2px 0; flex-shrink: 0; min-height: 40px; position: relative;
+            display: flex; gap: 2px; padding: 5px; background: #eecfa1; border: 1px solid #8d6e63;
+            width: 100%; flex-wrap: wrap; align-items: center; justify-content: center;
+            border-radius: 4px; margin: 5px 0; min-height: 45px;
         }
-        
         .hand-label { 
-            font-size: 0.8rem; font-weight: bold; margin-right: 10px; 
-            background: rgba(255,255,255,0.5); padding: 1px 5px; border-radius: 4px;
-            white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 120px;
+            font-size: 0.8rem; font-weight: bold; margin-right: 8px; 
+            background: rgba(255,255,255,0.6); padding: 2px 6px; border-radius: 4px;
+            white-space: nowrap;
         }
         .point-badge {
-            font-size: 0.75rem; background: #fff; border: 1px solid #aaa; padding: 0 4px;
-            border-radius: 8px; margin-right: 5px; color: #555;
+            font-size: 0.75rem; background: #fff; border: 1px solid #aaa; padding: 1px 5px;
+            border-radius: 10px; margin-right: 5px; color: #555; font-family: sans-serif;
         }
+        .hand-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 4px; }
+        .hand-piece { font-size: 1.5rem; cursor: pointer; padding: 0 4px; line-height: 1; user-select: none; position: relative; }
+        .hand-piece:hover { background-color: rgba(255,255,255,0.4); border-radius: 4px; }
+        .hand-piece.selected { background-color: #fff176; border: 2px solid #fbc02d; border-radius: 4px; }
+        .count { font-size: 0.8rem; color: #d32f2f; vertical-align: top; font-weight: bold; }
 
-        .hand-container { display: flex; flex-wrap: wrap; justify-content: center; gap: 2px; }
-        .hand-piece { font-size: 1.3rem; cursor: pointer; padding: 0 2px; line-height: 1; position: relative; user-select: none; }
-        .hand-piece:hover { background-color: rgba(255,255,255,0.4); }
-        .hand-piece.selected { background-color: #fff176; border: 1px solid #fbc02d; border-radius: 4px; }
-        .count { font-size: 0.75rem; color: #d32f2f; vertical-align: top; margin-left: 0px; font-weight: bold; }
-
+        /* 盤面 */
         .board-wrapper {
-            aspect-ratio: 9 / 10; height: 100%; max-height: 85vh; width: auto;
-            position: relative; flex-shrink: 1;
+            position: relative;
+            /* PC表示時はある程度の大きさ */
+            width: 500px; height: 550px; 
+            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
         }
         .board-container {
             width: 100%; height: 100%;
             display: grid; grid-template-columns: repeat(9, 1fr); grid-template-rows: repeat(9, 1fr);
             border: 2px solid var(--line-color); background-color: var(--board-bg);
-            box-shadow: 0 5px 15px rgba(0,0,0,0.3);
             transition: transform 0.4s ease;
         }
         .board-container.flipped { transform: rotate(180deg); }
 
         .cell {
             border: 0.5px solid var(--line-color); display: flex; justify-content: center; align-items: center;
-            font-size: clamp(10px, 4.5vmin, 2.2rem); position: relative; cursor: pointer; user-select: none;
+            font-size: 2.2rem; position: relative; cursor: pointer; user-select: none;
         }
         .cell.selected { background-color: var(--highlight); }
         .cell.checked { background-color: var(--check-bg); }
         .cell.valid::after {
-            content: ''; position: absolute; width: 30%; height: 30%;
-            background-color: #4caf50; border-radius: 50%; opacity: 0.6;
+            content: ''; position: absolute; width: 20%; height: 20%;
+            background-color: #4caf50; border-radius: 50%; opacity: 0.7;
         }
-        .piece { font-weight: bold; line-height: 1; pointer-events: none; white-space: nowrap; }
+        .piece { font-weight: bold; line-height: 1; pointer-events: none; white-space: nowrap; font-family: serif; }
         .sente { color: #000; }
         .gote { color: #000; transform: rotate(180deg); }
         .promoted { color: #d50000; }
@@ -94,50 +105,76 @@
         .game-over-overlay {
             position: absolute; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.75); display: flex; justify-content: center; align-items: center;
-            color: white; font-size: 1.5rem; font-weight: bold; z-index: 10; pointer-events: none;
+            color: white; font-size: 1.8rem; font-weight: bold; z-index: 10; pointer-events: none;
             opacity: 0; transition: opacity 0.3s; white-space: pre-wrap; text-align: center;
         }
         .game-over-overlay.visible { opacity: 1; pointer-events: auto; }
 
+        /* サイドバー */
         .sidebar {
-            width: 250px; display: flex; flex-direction: column; gap: 8px;
-            background: #fff; padding: 8px; border-radius: 8px;
-            box-shadow: 0 2px 5px rgba(0,0,0,0.1); height: 100%; max-height: 85vh;
+            width: 280px; display: flex; flex-direction: column; gap: 10px;
+            background: #fff; padding: 10px; border-radius: 8px;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1); 
+            /* PCでは高さ制限してスクロール */
+            max-height: 600px; 
         }
         .turn-indicator {
-            text-align: center; font-weight: bold; padding: 4px;
-            background: #eee; border-radius: 4px; font-size: 0.9rem; flex-shrink: 0;
+            text-align: center; font-weight: bold; padding: 8px;
+            background: #eee; border-radius: 4px; font-size: 1rem;
         }
         .kifu-list {
             flex: 1; overflow-y: auto; border: 1px solid #ddd;
-            font-size: 0.8rem; padding: 5px; background: #fafafa; font-family: monospace; min-height: 0;
+            font-size: 0.85rem; padding: 5px; background: #fafafa; font-family: monospace; min-height: 150px;
         }
-        .kifu-line { padding: 2px 4px; border-bottom: 1px dotted #eee; cursor: pointer; }
+        .kifu-line { padding: 4px; border-bottom: 1px dotted #eee; cursor: pointer; }
         .kifu-line:hover { background-color: #f0f0f0; }
-        .kifu-line.current { background-color: #e3f2fd; font-weight: bold; border-left: 3px solid #2196f3; }
+        .kifu-line.current { background-color: #e3f2fd; font-weight: bold; border-left: 4px solid #2196f3; }
 
-        .btn-group { display: flex; gap: 5px; flex-shrink: 0; justify-content: space-between; }
+        .btn-group { display: flex; gap: 5px; justify-content: space-between; }
         .btn-group.grid { display: grid; grid-template-columns: 1fr 1fr; }
         
         button {
-            padding: 8px; font-size: 0.8rem; cursor: pointer; flex: 1;
-            background: #fff; border: 1px solid #bbb; border-radius: 4px;
+            padding: 10px; font-size: 0.9rem; cursor: pointer; flex: 1;
+            background: #fff; border: 1px solid #bbb; border-radius: 4px; touch-action: manipulation;
         }
         button:hover { background: #eee; }
         .btn-save { background-color: #e8f5e9; border-color: #a5d6a7; color: #2e7d32; }
         .btn-resign { background-color: #ffebee; border-color: #ef9a9a; color: #c62828; }
         .btn-draw { background-color: #e3f2fd; border-color: #90caf9; color: #1565c0; }
         
-        .playback-controls { display: flex; gap: 2px; margin-top: 5px; }
-        .playback-controls button { font-family: monospace; font-weight: bold; }
+        .playback-controls button { font-family: monospace; font-weight: bold; font-size: 1.1rem; }
 
-        @media (max-width: 768px) {
-            .meta-info { grid-template-columns: 1fr 1fr; }
-            .main-container { flex-direction: column; height: auto; justify-content: flex-start; overflow-y: auto; }
-            .game-area { height: auto; flex: none; }
-            .board-wrapper { max-height: 55dvh; max-width: 100%; }
-            .hand { max-width: 100%; }
-            .sidebar { width: 100%; height: auto; max-height: none; flex: 1; min-height: 300px; order: 3; }
+        /* --- スマホ・タブレット対応 (レスポンシブ) --- */
+        @media (max-width: 850px) {
+            .meta-info { grid-template-columns: 1fr 1fr; } /* 2列にする */
+            
+            .main-container {
+                flex-direction: column; /* 縦並び */
+                align-items: center;
+                width: 100%;
+            }
+
+            .game-area { width: 100%; max-width: 100%; }
+
+            /* 盤面を画面幅いっぱいに */
+            .board-wrapper {
+                width: 100%;
+                max-width: 100%; /* 幅いっぱい */
+                height: auto;
+                aspect-ratio: 9 / 10; /* 比率を維持 */
+            }
+            
+            /* マス目の文字サイズを画面幅に合わせて調整 (vw) */
+            .cell { font-size: 9vw; } 
+
+            .hand { width: 100%; max-width: none; }
+            .hand-piece { font-size: 2rem; padding: 0 8px; }
+
+            .sidebar {
+                width: 100%; max-height: none; /* 高さを自由に */
+                order: 3; /* 一番下に配置 */
+            }
+            .kifu-list { max-height: 200px; } /* 棋譜リストの高さ制限 */
         }
     </style>
 </head>
@@ -145,7 +182,11 @@
 
     <div class="meta-info">
         <input type="text" id="meta-event" class="meta-input" placeholder="棋戦名">
-        <input type="date" id="meta-date" class="meta-input">
+        <div class="date-wrapper">
+            <input type="text" id="meta-date-text" class="meta-input" placeholder="日付 (例:R6/10/1)">
+            <button class="date-btn" onclick="document.getElementById('meta-date-picker').showPicker()">📅</button>
+            <input type="date" id="meta-date-picker" style="visibility:hidden; position:absolute; width:0;" onchange="game.onDatePicked(this.value)">
+        </div>
         <input type="text" id="meta-sente" class="meta-input" placeholder="▲先手" oninput="game.updateHandLabels()">
         <input type="text" id="meta-gote" class="meta-input" placeholder="△後手" oninput="game.updateHandLabels()">
     </div>
@@ -170,14 +211,15 @@
 
         <div class="sidebar">
             <div class="turn-indicator" id="turn-display">開始前</div>
-            <div class="kifu-list" id="kifu-list"></div>
-
+            
             <div class="playback-controls">
                 <button onclick="game.goto(0)">|&lt;</button>
                 <button onclick="game.prev()">&lt;</button>
                 <button onclick="game.next()">&gt;</button>
                 <button onclick="game.goto(-1)">&gt;|</button>
             </div>
+
+            <div class="kifu-list" id="kifu-list"></div>
 
             <div class="btn-group" style="margin-top:5px;">
                 <button class="btn-resign" onclick="game.resign()">投了</button>
@@ -230,7 +272,13 @@
             this.selected = null;
             this.validMoves = [];
             
-            document.getElementById('meta-date').valueAsDate = new Date();
+            // 初期日付設定
+            const today = new Date();
+            const y = today.getFullYear();
+            const m = String(today.getMonth()+1).padStart(2,'0');
+            const d = String(today.getDate()).padStart(2,'0');
+            document.getElementById('meta-date-text').value = `${y}/${m}/${d}`;
+            
             this.init();
         }
 
@@ -270,6 +318,60 @@
         get hands() { return this.currentState.hands; }
         get turn() { return this.currentState.turn; }
 
+        // --- 日付処理 ---
+        onDatePicked(val) {
+            // カレンダーから選択された(yyyy-mm-dd)をテキストボックスに反映
+            if(val) document.getElementById('meta-date-text').value = val.replace(/-/g, '/');
+        }
+
+        formatDateForKIF(input) {
+            // 和暦などを西暦(YYYY/MM/DD)に変換して返す
+            let str = input.trim();
+            // 全角数字を半角に
+            str = str.replace(/[０-９]/g, s => String.fromCharCode(s.charCodeAt(0) - 0xFEE0));
+            
+            // 和暦判定 (簡易)
+            // H30.1.1, R5/10/10, 令和5年...
+            const eraMap = { 'M':1868, 'T':1912, 'S':1926, 'H':1989, 'R':2019, '明治':1868, '大正':1912, '昭和':1926, '平成':1989, '令和':2019 };
+            
+            // "R6..." などを検出
+            const warekiRegex = /^([A-Za-z]+|[^\x01-\x7E]+)(\d+)[./年\-](\d+)[./月\-](\d+)/;
+            const match = str.match(warekiRegex);
+            if (match) {
+                const eraStr = match[1];
+                let eraYear = parseInt(match[2]);
+                const m = parseInt(match[3]);
+                const d = parseInt(match[4]);
+                
+                // 元号オフセット特定
+                let offset = 0;
+                for (const [key, val] of Object.entries(eraMap)) {
+                    if (eraStr.toUpperCase().startsWith(key) || eraStr === key) {
+                        offset = val;
+                        // 令和1年は2019年、令和2年は2020年... -> (year-1) + offset
+                        // 明治1年=1868 -> 1868 + 0 
+                        // ロジック統一: 元年は offset と定義していることが多いが、正確には
+                        // 令和1年 = 2019. (2019 - 1) + 1 = 2019. 
+                        // Mapの値は「元年」の西暦
+                        break;
+                    }
+                }
+                if (offset > 0) {
+                    const year = offset + eraYear - 1;
+                    return `${year}/${String(m).padStart(2,'0')}/${String(d).padStart(2,'0')}`;
+                }
+            }
+            
+            // 西暦整形 (2024-1-1 -> 2024/01/01)
+            const seirekiMatch = str.match(/(\d{4})[./\-](\d{1,2})[./\-](\d{1,2})/);
+            if (seirekiMatch) {
+                return `${seirekiMatch[1]}/${String(seirekiMatch[2]).padStart(2,'0')}/${String(seirekiMatch[3]).padStart(2,'0')}`;
+            }
+
+            return str; // 変換不能ならそのまま
+        }
+
+        // --- 表示更新 ---
         updateHandLabels() {
             const senteName = document.getElementById('meta-sente').value || "先手";
             const goteName = document.getElementById('meta-gote').value || "後手";
@@ -508,7 +610,7 @@
         
         jishogi() {
             if (this.currentState.isGameOver) return;
-            if (!confirm("持将棋（引き分け）にしますか？\n（合意が必要です）")) return;
+            if (!confirm("持将棋（引き分け）にしますか？")) return;
             const state = JSON.parse(JSON.stringify(this.currentState));
             state.isGameOver = true;
             state.msg = "持将棋\n引き分け";
@@ -532,17 +634,40 @@
         renderKifuList() { const list = document.getElementById('kifu-list'); list.innerHTML = this.history.map((line, i) => `<div class="kifu-line ${i === this.currentStep - 1 ? 'current' : ''}" onclick="game.goto(${i+1})">${i+1}: ${line}</div>`).join(''); const currentEl = list.querySelector('.current'); if (currentEl) currentEl.scrollIntoView({ block: "center", behavior: "smooth" }); }
         updateStatus() { const el = document.getElementById('turn-display'); if (this.currentState.isGameOver) { el.innerText = "終局"; el.style.borderBottom = "3px solid #555"; } else { const sName = document.getElementById('meta-sente').value || "先手"; const gName = document.getElementById('meta-gote').value || "後手"; el.innerText = `${this.turn === 'sente' ? '▲'+sName : '△'+gName} (${this.currentStep}手)`; el.style.borderBottom = `3px solid ${this.turn === 'sente' ? '#000' : '#d32f2f'}`; } }
         generateKifuText(r, c, type, promoted, isDrop, fromStr, lastTo) { const x = 9 - c; const y = NUM_KANJI[r + 1]; const xStr = NUM_ZENKAKU[x]; let dest = `${xStr}${y}`; if (lastTo && lastTo.r === r && lastTo.c === c) dest = "同　"; let pName = PIECE_NAMES[type]; if (promoted) pName = (type === 'FU' ? 'と' : (type === 'KA' ? '馬' : (type === 'HI' ? '龍' : pName + '成'))); if (promoted && !pName.endsWith('成') && !['と','馬','龍'].includes(pName)) pName += '成'; return `${dest}${pName}${isDrop ? '打' : ''}${fromStr}`; }
-        createKIFString() { let kif = `# KIF formated by WebShogi\n`; kif += `開始日時：${document.getElementById('meta-date').value.replace(/-/g, '/')}\n`; kif += `棋戦：${document.getElementById('meta-event').value}\n`; kif += `先手：${document.getElementById('meta-sente').value}\n`; kif += `後手：${document.getElementById('meta-gote').value}\n`; kif += `手数----指手---------消费時間--\n`; this.history.forEach((line, i) => kif += `${String(i + 1).padStart(4, ' ')} ${line}\n`); return kif; }
-        downloadKIF() { const blob = new Blob([this.createKIFString()], { type: 'text/plain' }); const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = `shogi_${document.getElementById('meta-date').value}.kif`; a.click(); }
+        
+        createKIFString() { 
+            const dRaw = document.getElementById('meta-date-text').value;
+            const dFmt = this.formatDateForKIF(dRaw);
+            let kif = `# KIF formated by WebShogi\n`; 
+            kif += `開始日時：${dFmt}\n`; 
+            kif += `棋戦：${document.getElementById('meta-event').value}\n`; 
+            kif += `先手：${document.getElementById('meta-sente').value}\n`; 
+            kif += `後手：${document.getElementById('meta-gote').value}\n`; 
+            kif += `手数----指手---------消费時間--\n`; 
+            this.history.forEach((line, i) => kif += `${String(i + 1).padStart(4, ' ')} ${line}\n`); 
+            return kif; 
+        }
+        
+        downloadKIF() { 
+            const blob = new Blob([this.createKIFString()], { type: 'text/plain' }); 
+            const a = document.createElement('a'); 
+            a.href = URL.createObjectURL(blob); 
+            // ファイル名用日付
+            const d = this.formatDateForKIF(document.getElementById('meta-date-text').value).replace(/\//g, '');
+            a.download = `shogi_${d||'game'}.kif`; 
+            a.click(); 
+        }
         
         handleFileSelect(evt) {
             const file = evt.target.files[0];
             if (!file) return;
             const reader = new FileReader();
+            // 文字コード自動判定（Shift_JISかUTF-8か）
             reader.onload = (e) => {
                 const buffer = e.target.result;
                 let decoder = new TextDecoder('shift-jis');
                 let text = decoder.decode(buffer);
+                // Shift_JISでデコードして、明らかに文字化けしている（将棋用語が含まれない）場合、UTF-8で再試行
                 if (!text.includes('手数') && !text.includes('先手') && !text.includes('1 ')) {
                     decoder = new TextDecoder('utf-8');
                     text = decoder.decode(buffer);
@@ -562,13 +687,18 @@
                 if(line.includes("棋戦：")) document.getElementById('meta-event').value = line.split("：")[1].trim();
                 if(line.includes("先手：")) document.getElementById('meta-sente').value = line.split("：")[1].trim();
                 if(line.includes("後手：")) document.getElementById('meta-gote').value = line.split("：")[1].trim();
-                // 日時修正
-                const dateMatch = line.match(/開始日時[：:]\s*(\d{4})[/-](\d{1,2})[/-](\d{1,2})/);
+                
+                // 開始日時パース
+                const dateMatch = line.match(/開始日時[：:]\s*(.+)/);
                 if (dateMatch) {
-                    const y = dateMatch[1];
-                    const m = dateMatch[2].padStart(2, '0');
-                    const d = dateMatch[3].padStart(2, '0');
-                    document.getElementById('meta-date').value = `${y}-${m}-${d}`;
+                    // YYYY/MM/DD 形式ならそのまま、そうでなければ抽出
+                    const dateStr = dateMatch[1].trim();
+                    const stdDate = dateStr.match(/(\d{4})[./-](\d{1,2})[./-](\d{1,2})/);
+                    if (stdDate) {
+                        document.getElementById('meta-date-text').value = `${stdDate[1]}/${String(stdDate[2]).padStart(2,'0')}/${String(stdDate[3]).padStart(2,'0')}`;
+                    } else {
+                        document.getElementById('meta-date-text').value = dateStr;
+                    }
                 }
             });
             this.updateHandLabels();
